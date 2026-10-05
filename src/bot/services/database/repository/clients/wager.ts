@@ -1,4 +1,4 @@
-import { pool } from "../../db";
+import { withTransaction } from "../../transaction";
 
 export type WalletWagerResult =
     | {
@@ -18,11 +18,7 @@ export async function applyWalletWager(
     amount: number,
     balanceDelta: number,
 ): Promise<WalletWagerResult> {
-    const client = await pool.connect();
-
-    try {
-        await client.query("BEGIN");
-
+    return withTransaction(async (client) => {
         await client.query(
             `
       INSERT INTO clients (user_id, guild_id, wallet, bank)
@@ -45,7 +41,6 @@ export async function applyWalletWager(
         const previousBalance = Number(balanceResult.rows[0].wallet);
 
         if (previousBalance < amount) {
-            await client.query("ROLLBACK");
             return {
                 ok: false,
                 reason: "insufficient_funds",
@@ -63,17 +58,10 @@ export async function applyWalletWager(
             [balanceDelta, userId, guildId],
         );
 
-        await client.query("COMMIT");
-
         return {
             ok: true,
             previousBalance,
             newBalance: Number(updateResult.rows[0].wallet),
         };
-    } catch (error) {
-        await client.query("ROLLBACK");
-        throw error;
-    } finally {
-        client.release();
-    }
+    });
 }

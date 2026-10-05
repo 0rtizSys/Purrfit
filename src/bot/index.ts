@@ -43,18 +43,34 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
         await command.execute!(interaction);
     } catch (error) {
         console.error(error);
-        if (interaction.replied || interaction.deferred) {
-            await interaction.followUp({
-                content: "❌ Error ejecutando comando",
-                flags: MessageFlags.Ephemeral,
-            });
-        } else {
-            await interaction.reply({
-                content: "❌ Error ejecutando comando",
-                flags: MessageFlags.Ephemeral,
-            });
+        //? The error reply itself can fail (expired or already answered
+        //? interaction); that must never escape this handler
+        try {
+            if (interaction.replied || interaction.deferred) {
+                await interaction.followUp({
+                    content: "❌ Error ejecutando comando",
+                    flags: MessageFlags.Ephemeral,
+                });
+            } else {
+                await interaction.reply({
+                    content: "❌ Error ejecutando comando",
+                    flags: MessageFlags.Ephemeral,
+                });
+            }
+        } catch (replyError) {
+            console.error("No se pudo responder al error:", replyError);
         }
     }
+});
+
+client.on(Events.Error, (error) => {
+    console.error("Error del cliente de Discord:", error);
+});
+
+//! Node terminates the process on unhandled promise rejections; a single
+//! failed Discord reply must not take the whole bot offline
+process.on("unhandledRejection", (reason) => {
+    console.error("Promesa rechazada sin manejar:", reason);
 });
 
 client.login(process.env.TOKEN);

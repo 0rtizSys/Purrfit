@@ -5,12 +5,9 @@ import {
     MessageFlags,
 } from "discord.js";
 
-import {
-    checkCooldown,
-    setCooldown,
-} from "../../../services/database/repository/cooldowns/cd_manager";
+import { randomInt } from "crypto";
 
-import { addBalance } from "../../../services/database/repository/clients/manager";
+import { claimWorkReward } from "../../../services/database/repository/clients/work";
 
 import { getCdTime } from "../../../services/database/repository/servers/get_cd_time";
 
@@ -27,7 +24,7 @@ const TEMP_MIN: number = 100;
 const TEMP_MAX: number = 1000;
 
 function randomValues(Na: number, Nb: number) {
-    return Math.floor(Math.random() * (Nb - Na + 1)) + Na;
+    return randomInt(Na, Nb + 1);
 }
 
 export type Command = {
@@ -51,23 +48,30 @@ export const workCommand: Command = {
         const guildId = interaction.guild!.id;
         const userId = interaction.user.id;
         const isPublic = interaction.options.getBoolean("visibility") ?? false;
-        const cdTime = await getCdTime(guildId);
-        const symbol = await getEcoSymbol(guildId);
-        const cd = await checkCooldown(guildId, userId);
-        if (!cd.allowed && cd.remaining != null) {
-            await sendSimpleEmbed(interaction, {
-                title: "On Cooldown 🧊",
-                description: `Wait \`${Math.ceil(cd.remaining / 1000)}\` seconds to work again 🕐!`,
-                thumType: "error",
-            });
-            return;
-        }
         await interaction.deferReply({
             flags: !isPublic ? MessageFlags.Ephemeral : undefined,
         });
         try {
-            await addBalance(userId, guildId, "wallet", ranGains);
-            await setCooldown(guildId, userId, cdTime * 1000);
+            const [cdTime, symbol] = await Promise.all([
+                getCdTime(guildId),
+                getEcoSymbol(guildId),
+            ]);
+            //? Cooldown claim + payout run in one transaction, so spamming
+            //? /work in parallel can only pay once per cooldown window
+            const result = await claimWorkReward(
+                userId,
+                guildId,
+                ranGains,
+                cdTime * 1000,
+            );
+            if (!result.ok) {
+                await sendSimpleEmbed(interaction, {
+                    title: "On Cooldown 🧊",
+                    description: `Wait \`${Math.ceil(result.remaining / 1000)}\` seconds to work again 🕐!`,
+                    thumType: "error",
+                });
+                return;
+            }
             await sendSimpleEmbed(interaction, {
                 title: "💼 Work",
                 description: `${interaction.user} earned \`${symbol}${ranGains}\` 💵`,

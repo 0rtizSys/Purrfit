@@ -10,14 +10,15 @@ import { Command } from "../../types";
 
 import {
     isInvalidAmount,
-    hasInsufficientBalance,
     isSelfTransfer,
     isBotAction,
+    MAX_AMOUNT,
+    MIN_AMOUNT,
 } from "../../../Helpers/validators";
 
 import {
+    InsuficientsFundsEmbed,
     internalErrorEmbed,
-    transactionWentWrong,
 } from "../../../Helpers/simplified_embed_builder";
 
 import { transferSafe } from "../../../services/database/repository/clients/transaction";
@@ -40,7 +41,9 @@ export const transferCommand: Command = {
             opt
                 .setName("amount")
                 .setDescription("Amount to transfer")
-                .setRequired(true),
+                .setRequired(true)
+                .setMinValue(MIN_AMOUNT)
+                .setMaxValue(MAX_AMOUNT),
         )
         .addBooleanOption((opt) =>
             opt
@@ -52,7 +55,8 @@ export const transferCommand: Command = {
         if (!(await requireGuild(interaction))) return;
         const guildId = interaction.guild!.id;
         const userId = interaction.user.id;
-        const targetId = interaction.options.getUser("user")!.id;
+        const target = interaction.options.getUser("user", true);
+        const targetId = target.id;
         const amount = interaction.options.getInteger("amount", true);
         const isPublic = interaction.options.getBoolean("visibility") ?? false;
         await interaction.deferReply({
@@ -61,28 +65,24 @@ export const transferCommand: Command = {
         try {
             const symbol = await getEcoSymbol(guildId);
             if (await isSelfTransfer(interaction, userId, targetId)) return;
-            if (await isBotAction(interaction, targetId)) return;
+            if (await isBotAction(interaction, target)) return;
             if (await isInvalidAmount(interaction, amount)) return;
-            if (
-                await hasInsufficientBalance(
-                    interaction,
-                    userId,
-                    guildId,
-                    amount,
-                    symbol,
-                    "checkBank",
-                    "transfer",
-                )
-            )
-                return;
-            const isAnyError = await transferSafe(
+            //? The balance check happens inside the transaction, under a row lock
+            const result = await transferSafe(
                 userId,
                 targetId,
                 guildId,
                 amount,
             );
-            if (isAnyError) {
-                return await transactionWentWrong(interaction);
+            if (!result.ok) {
+                await InsuficientsFundsEmbed(
+                    interaction,
+                    result.currentBalance,
+                    amount,
+                    symbol,
+                    "transfer",
+                );
+                return;
             }
             await sendSimpleEmbed(interaction, {
                 title: "Transaction completed 💳",

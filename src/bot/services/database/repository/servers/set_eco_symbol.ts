@@ -1,4 +1,5 @@
 import { pool } from "../../db";
+import { ecoSymbolCache } from "./get_eco_symbol";
 
 export async function setEcoSymbol(guildId: string, symbol: string) {
     try {
@@ -11,6 +12,7 @@ export async function setEcoSymbol(guildId: string, symbol: string) {
             `,
             [guildId, symbol],
         );
+        ecoSymbolCache.set(guildId, symbol);
         return true;
     } catch (e) {
         console.log(e);
