@@ -89,8 +89,9 @@ async function chart(interaction: ChatInputCommandInteraction) {
         "24h") as ChartRange;
     if (!(range in CHART_RANGES)) {
         await sendSimpleEmbed(interaction, {
-            ...UNKNOWN_COIN,
             title: "✖️ Invalid range",
+            description: "Choose `1h`, `24h`, `7d` or `30d`.",
+            thumType: "error",
             eph: true,
         });
         return;
