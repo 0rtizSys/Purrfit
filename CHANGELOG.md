@@ -1,5 +1,41 @@
 # Changelog
 
+## [1.11.0] - 2026-10-05
+- Added `DATABASE_CA_CERT` and `DB_POOL_MAX` to `.env.example`
+
+### 🔒 Security
+- Fixed `/set_economy_symbol` saving the new symbol for members without `Administrator` (missing `return` after `notEnoughPermsEmbed` in `set_eco_symbol.admin.ts`).
+- Fixed `/add_balance` continuing after the permission error; it was only stopped by the `deferReply` exception on an already-replied interaction. Permission checks now run first in both commands.
+- Added `setDefaultMemberPermissions(Administrator)` to `add_balance`, `set_cooldown_time` and `set_economy_symbol` so they are hidden from non-admins (runtime checks kept).
+- Fixed `/work` race condition (check cooldown -> pay -> set cooldown) that paid out once per parallel call (25 parallel calls paid 25x in a local reproduction). New `claimCooldown` in `cd_manager.ts` uses `INSERT ... ON CONFLICT DO UPDATE ... WHERE cooldown <= now` and `claimWorkReward` (`repository/clients/work.ts`) claims the cooldown and pays in one transaction.
+- `/set_economy_symbol` rejects markdown and mention characters (`` ` * _ ~ | \ < > @ ``) and counts length in code points.
+- `db.ts` verifies the server certificate when `DATABASE_CA_CERT` is set (previously always `rejectUnauthorized: false`).
+- Added Discord-side bounds (`setMinValue`/`setMaxValue`/`setMaxLength`) to every amount option, `set_cooldown_time` (1 to 2,592,000 s, also enforced in `setCdTime`) and the symbol option.
+- `validateAmount` schema now requires integers (`z.number().int()`).
+
+### ♻️ changes
+- Added `withTransaction` helper (`services/database/transaction.ts`): `BEGIN`/`COMMIT`/`ROLLBACK`, always releases the client and destroys it if `ROLLBACK` fails. Used by `transferSafe`, `transferInternalSafe`, `applyWalletWager` and `claimWorkReward`.
+- `transferSafe` and `transferInternalSafe` now return a typed result (`{ ok: true }` or `{ ok: false, reason: "insufficient_funds", currentBalance }`) and throw on database errors instead of returning `true`.
+- `transferSafe` creates both rows and locks them `ORDER BY user_id FOR UPDATE`, so crossed A->B / B->A transfers no longer deadlock; the debit and credit are a single `UPDATE`.
+- `/deposit`, `/withdraw` and `/transfer` defer the reply before any database query and no longer pre-check the balance outside the transaction (removed `hasInsufficientBalance`); the insufficient-funds embed uses the balance read under the row lock. Saves 2 round-trips per command and avoids expired interactions on a slow database.
+- `getBalance` is a single read-only `SELECT` (returns `0` for unknown users instead of inserting a row) and returns `number`.
+- `getEcoSymbol` and `getCdTime` are cached per guild for 60 s (`services/cache/ttl_cache.ts`); `setEcoSymbol` and `setCdTime` update the cache.
+- `/work` reads cooldown time and symbol in parallel and uses `crypto.randomInt` for the reward.
+- `isBotAction` uses the `User` already resolved in the interaction instead of `client.users.fetch`.
+- `pg` pool: added `error` listener, `max` (`DB_POOL_MAX`, default 10), `idleTimeoutMillis` and `connectionTimeoutMillis`.
+- `index.ts`: the error reply is wrapped in `try/catch`, and added `Events.Error` and `unhandledRejection` handlers so a failed Discord reply cannot crash the bot.
+
+### 🐛 Logic bugs fixed
+- Fixed `removeBalance` inserting a row with a positive balance for unknown users and throwing when funds were insufficient; it now returns `null`.
+- Fixed `sendSimpleEmbed` not awaiting `interaction.reply` (unhandled rejection).
+- Fixed `/set_economy_symbol` showing success when `setEcoSymbol` failed.
+- Fixed `/deposit` amount option description saying "Amount to withdraw".
+
+### 🧪 Tests
+- Fixed stale mock paths in `deposit-withdraw.test.ts` and `scdt.test.ts` (`tables/` -> `repository/`, `../../db`) and the Spanish expectations in `coin-flip.test.ts`; all suites pass.
+- Added `money-repository.test.ts` (work cooldown claim, transfer lock order, insufficient funds, rollback, column allowlist, `removeBalance`).
+- Added `admin-permissions.test.ts` (non-admins cannot run `add_balance` / `set_economy_symbol`).
+
 ## [1.10.2] - 2026-08-13
 - Updated `README.md`
 

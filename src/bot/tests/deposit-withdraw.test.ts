@@ -1,13 +1,13 @@
-import { MessageFlags } from "discord.js";
+import { ChatInputCommandInteraction, MessageFlags } from "discord.js";
 import { depositCommand } from "../commands/economy/public/deposit";
 import { withdrawCommand } from "../commands/economy/public/withdraw";
 import { requireGuild } from "../Helpers/require_guild";
-import { hasInsufficientBalance, isInvalidAmount } from "../Helpers/validators";
+import { isInvalidAmount } from "../Helpers/validators";
 import { getEcoSymbol } from "../services/database/repository/servers/get_eco_symbol";
 import { transferInternalSafe } from "../services/database/repository/clients/withdraw-transfer";
 import {
+    InsuficientsFundsEmbed,
     sendSimpleEmbed,
-    transactionWentWrong,
 } from "../Helpers/simplified_embed_builder";
 
 jest.mock("../Helpers/require_guild", () => ({
@@ -15,31 +15,31 @@ jest.mock("../Helpers/require_guild", () => ({
 }));
 
 jest.mock("../Helpers/validators", () => ({
-    hasInsufficientBalance: jest.fn(),
     isInvalidAmount: jest.fn(),
+    MIN_AMOUNT: 1,
+    MAX_AMOUNT: 1_000_000_000,
 }));
 
-jest.mock("../services/database/tables/servers/get_eco_symbol", () => ({
+jest.mock("../services/database/repository/servers/get_eco_symbol", () => ({
     getEcoSymbol: jest.fn(),
 }));
 
-jest.mock("../services/database/tables/clients/withdraw-transfer", () => ({
+jest.mock("../services/database/repository/clients/withdraw-transfer", () => ({
     transferInternalSafe: jest.fn(),
 }));
 
 jest.mock("../Helpers/simplified_embed_builder", () => ({
     internalErrorEmbed: jest.fn(),
     sendSimpleEmbed: jest.fn(),
-    transactionWentWrong: jest.fn(),
+    InsuficientsFundsEmbed: jest.fn(),
 }));
 
 const requireGuildMock = jest.mocked(requireGuild);
 const isInvalidAmountMock = jest.mocked(isInvalidAmount);
-const hasInsufficientBalanceMock = jest.mocked(hasInsufficientBalance);
 const getEcoSymbolMock = jest.mocked(getEcoSymbol);
 const transferInternalSafeMock = jest.mocked(transferInternalSafe);
 const sendSimpleEmbedMock = jest.mocked(sendSimpleEmbed);
-const transactionWentWrongMock = jest.mocked(transactionWentWrong);
+const insufficientFundsMock = jest.mocked(InsuficientsFundsEmbed);
 
 function createInteraction(amount = 250, visibility = false) {
     return {
@@ -56,18 +56,19 @@ function createInteraction(amount = 250, visibility = false) {
         deferReply: jest.fn().mockResolvedValue(undefined),
         deferred: true,
         replied: false,
-    } as any;
+    } as unknown as ChatInputCommandInteraction & {
+        deferReply: jest.Mock;
+    };
 }
 
 beforeEach(() => {
     jest.clearAllMocks();
     requireGuildMock.mockResolvedValue(true);
     isInvalidAmountMock.mockResolvedValue(false);
-    hasInsufficientBalanceMock.mockResolvedValue(false);
     getEcoSymbolMock.mockResolvedValue("$");
-    transferInternalSafeMock.mockResolvedValue(false);
+    transferInternalSafeMock.mockResolvedValue({ ok: true });
     sendSimpleEmbedMock.mockResolvedValue(undefined);
-    transactionWentWrongMock.mockResolvedValue(undefined);
+    insufficientFundsMock.mockResolvedValue(undefined);
 });
 
 describe("depositCommand", () => {
@@ -86,7 +87,6 @@ describe("depositCommand", () => {
             "wallet",
             "bank",
         );
-        expect(transactionWentWrongMock).not.toHaveBeenCalled();
         expect(sendSimpleEmbedMock).toHaveBeenCalledWith(
             interaction,
             expect.objectContaining({
@@ -95,14 +95,34 @@ describe("depositCommand", () => {
         );
     });
 
-    it("shows a transaction error instead of success when the atomic deposit fails", async () => {
+    it("shows insufficient funds using the balance read under the row lock", async () => {
         const interaction = createInteraction(250, false);
-        transferInternalSafeMock.mockResolvedValue(true);
+        transferInternalSafeMock.mockResolvedValue({
+            ok: false,
+            reason: "insufficient_funds",
+            currentBalance: 100,
+        });
 
         await depositCommand.execute(interaction);
 
-        expect(transactionWentWrongMock).toHaveBeenCalledWith(interaction);
+        expect(insufficientFundsMock).toHaveBeenCalledWith(
+            interaction,
+            100,
+            250,
+            "$",
+            "deposit",
+        );
         expect(sendSimpleEmbedMock).not.toHaveBeenCalled();
+    });
+
+    it("does not touch the database when the amount is invalid", async () => {
+        const interaction = createInteraction(0, false);
+        isInvalidAmountMock.mockResolvedValue(true);
+
+        await depositCommand.execute(interaction);
+
+        expect(interaction.deferReply).not.toHaveBeenCalled();
+        expect(transferInternalSafeMock).not.toHaveBeenCalled();
     });
 });
 
@@ -122,7 +142,6 @@ describe("withdrawCommand", () => {
             "bank",
             "wallet",
         );
-        expect(transactionWentWrongMock).not.toHaveBeenCalled();
         expect(sendSimpleEmbedMock).toHaveBeenCalledWith(
             interaction,
             expect.objectContaining({
@@ -131,13 +150,23 @@ describe("withdrawCommand", () => {
         );
     });
 
-    it("shows a transaction error instead of success when the atomic withdrawal fails", async () => {
+    it("shows insufficient funds instead of success when the bank cannot cover it", async () => {
         const interaction = createInteraction(400, true);
-        transferInternalSafeMock.mockResolvedValue(true);
+        transferInternalSafeMock.mockResolvedValue({
+            ok: false,
+            reason: "insufficient_funds",
+            currentBalance: 0,
+        });
 
         await withdrawCommand.execute(interaction);
 
-        expect(transactionWentWrongMock).toHaveBeenCalledWith(interaction);
+        expect(insufficientFundsMock).toHaveBeenCalledWith(
+            interaction,
+            0,
+            400,
+            "$",
+            "withdraw",
+        );
         expect(sendSimpleEmbedMock).not.toHaveBeenCalled();
     });
 });

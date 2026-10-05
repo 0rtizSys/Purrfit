@@ -9,16 +9,17 @@ import { Command } from "../../types";
 import { requireGuild } from "../../../Helpers/require_guild";
 
 import {
-    hasInsufficientBalance,
     isInvalidAmount,
+    MAX_AMOUNT,
+    MIN_AMOUNT,
 } from "../../../Helpers/validators";
 
 import { getEcoSymbol } from "../../../services/database/repository/servers/get_eco_symbol";
 
 import {
+    InsuficientsFundsEmbed,
     internalErrorEmbed,
     sendSimpleEmbed,
-    transactionWentWrong,
 } from "../../../Helpers/simplified_embed_builder";
 
 import { transferInternalSafe } from "../../../services/database/repository/clients/withdraw-transfer";
@@ -31,7 +32,9 @@ export const withdrawCommand: Command = {
             opt
                 .setName("amount")
                 .setDescription("Amount to withdraw")
-                .setRequired(true),
+                .setRequired(true)
+                .setMinValue(MIN_AMOUNT)
+                .setMaxValue(MAX_AMOUNT),
         )
         .addBooleanOption((opt) =>
             opt
@@ -47,33 +50,30 @@ export const withdrawCommand: Command = {
         const amount = interaction.options.getInteger("amount", true);
         const userId = interaction.user.id;
         const guildId = interaction.guild!.id;
-        const ecoSymbol = await getEcoSymbol(guildId);
+        if (await isInvalidAmount(interaction, amount)) return;
+        //? Defer before touching the DB so a slow query cannot expire the interaction
+        await interaction.deferReply({
+            flags: !isPublic ? MessageFlags.Ephemeral : undefined,
+        });
         try {
-            if (await isInvalidAmount(interaction, amount)) return;
-            if (
-                await hasInsufficientBalance(
-                    interaction,
-                    userId,
-                    guildId,
-                    amount,
-                    ecoSymbol,
-                    "checkBank",
-                    "withdraw",
-                )
-            )
-                return;
-            await interaction.deferReply({
-                flags: !isPublic ? MessageFlags.Ephemeral : undefined,
-            });
-            const isAnyError = await transferInternalSafe(
+            const ecoSymbol = await getEcoSymbol(guildId);
+            //? The balance check happens inside the transaction, under a row lock
+            const result = await transferInternalSafe(
                 userId,
                 guildId,
                 amount,
                 "bank",
                 "wallet",
             );
-            if (isAnyError) {
-                return await transactionWentWrong(interaction);
+            if (!result.ok) {
+                await InsuficientsFundsEmbed(
+                    interaction,
+                    result.currentBalance,
+                    amount,
+                    ecoSymbol,
+                    "withdraw",
+                );
+                return;
             }
             await sendSimpleEmbed(interaction, {
                 title: "Withdrawal completed ✅ ",

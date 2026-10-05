@@ -34,7 +34,7 @@ export async function sendSimpleEmbed(
     if (interaction.deferred || interaction.replied) {
         await interaction.editReply({ embeds: [embed] });
     } else {
-        interaction.reply({
+        await interaction.reply({
             embeds: [embed],
             flags: options.eph ? MessageFlags.Ephemeral : undefined,
         });
