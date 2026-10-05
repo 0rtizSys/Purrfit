@@ -2,8 +2,10 @@
 
 This document describes the database schema used by the bot based on SQL queries found in `src/bot/services/database/repository/**`.
 
-> Note: No migrations/DDL (`CREATE TABLE ...`) were found in this repository.  
-> Because of that, types/constraints below are **recommended** and **inferred** from how the code uses PostgreSQL.
+> The real schema is in [`migrations/`](./migrations) and is applied automatically on start.
+> 2.0.0 added `tax_bps`, `bank_interest_bps` and `treasury` to `server_configurations`, and the
+> `crypto_assets`, `crypto_price_history`, `crypto_holdings` and `scheduled_jobs` tables
+> (see `migrations/002_advanced_economy.sql`). The sections below describe the original tables.
 
 ## Conventions
 

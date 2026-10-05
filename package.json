@@ -7,7 +7,7 @@
   "main": "dist/bot/index.js",
   "scripts": {
     "dev": "tsc --watch",
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "start": "node dist/scripts/migrate.js && node dist/bot/index.js",
     "compile": "npx tsc && node dist/bot/index.js",
     "init": "node dist/bot/index.js",
