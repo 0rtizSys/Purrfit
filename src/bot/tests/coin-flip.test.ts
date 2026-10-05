@@ -5,8 +5,8 @@ describe("settleCoinFlip", () => {
         const outcome = settleCoinFlip("heads", 100, () => "heads");
 
         expect(outcome).toEqual({
-            choice: "cara",
-            result: "cara",
+            choice: "heads",
+            result: "heads",
             won: true,
             amount: 100,
             balanceDelta: 100,
@@ -17,8 +17,8 @@ describe("settleCoinFlip", () => {
         const outcome = settleCoinFlip("heads", 100, () => "tails");
 
         expect(outcome).toEqual({
-            choice: "cara",
-            result: "cruz",
+            choice: "heads",
+            result: "tails",
             won: false,
             amount: 100,
             balanceDelta: -100,

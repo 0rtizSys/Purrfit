@@ -1,7 +1,7 @@
 import { pool } from "../services/database/db";
 import { setCdTime } from "../services/database/repository/servers/set_cd_time";
 
-jest.mock("../../db", () => ({
+jest.mock("../services/database/db", () => ({
     pool: {
         connect: jest.fn(),
     },

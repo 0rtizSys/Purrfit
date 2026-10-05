@@ -6,7 +6,11 @@ import {
 
 import { Command } from "../types";
 import { requireGuild } from "../../Helpers/require_guild";
-import { isInvalidAmount } from "../../Helpers/validators";
+import {
+    isInvalidAmount,
+    MAX_AMOUNT,
+    MIN_AMOUNT,
+} from "../../Helpers/validators";
 import {
     internalErrorEmbed,
     sendSimpleEmbed,
@@ -53,7 +57,8 @@ export const coinFlipCommand: Command = {
                 .setDescription(
                     `Amount to bet from your wallet (default ${DEFAULT_BET})`,
                 )
-                .setMinValue(1),
+                .setMinValue(MIN_AMOUNT)
+                .setMaxValue(MAX_AMOUNT),
         )
         .addBooleanOption((opt) =>
             opt

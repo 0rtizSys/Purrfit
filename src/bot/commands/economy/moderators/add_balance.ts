@@ -26,6 +26,8 @@ export const addBalanceCommand: Command = {
     data: new SlashCommandBuilder()
         .setName("add_balance")
         .setDescription("Add balance to an user wallet or bank")
+        //? Hidden from non-admins in Discord; the runtime check below still applies
+        .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addStringOption((opt) =>
             opt
                 .setName("method")
@@ -40,7 +42,9 @@ export const addBalanceCommand: Command = {
             opt
                 .setName("amount")
                 .setDescription("Amount of money you're adding")
-                .setRequired(true),
+                .setRequired(true)
+                .setMinValue(1)
+                .setMaxValue(1_000_000_000),
         )
         .addUserOption((opt) =>
             opt
@@ -56,6 +60,15 @@ export const addBalanceCommand: Command = {
 
     async execute(interaction: ChatInputCommandInteraction) {
         if (!(await requireGuild(interaction))) return;
+        //! Permission check first: nothing else runs for non-admins
+        if (
+            !interaction.memberPermissions?.has(
+                PermissionFlagsBits.Administrator,
+            )
+        ) {
+            await notEnoughPermsEmbed(interaction);
+            return;
+        }
         type typeMethod = "wallet" | "bank";
         const maxAmount = 1_000_000_000;
         const method = interaction.options.getString(
@@ -67,8 +80,16 @@ export const addBalanceCommand: Command = {
         const amount = interaction.options.getInteger("amount", true);
         const isPublic = interaction.options.getBoolean("visibility") ?? false;
         const guildId = interaction.guild!.id;
-        const symbol = await getEcoSymbol(guildId);
         //! IMPORTANT VALIDATIONS
+        if (method !== "wallet" && method !== "bank") {
+            await sendSimpleEmbed(interaction, {
+                title: "✖️ Error",
+                description: "Method must be `wallet` or `bank`",
+                thumType: "error",
+                eph: true,
+            });
+            return;
+        }
         if (amount <= 0 || amount > maxAmount) {
             await sendSimpleEmbed(interaction, {
                 title: "✖️ Error",
@@ -92,19 +113,13 @@ export const addBalanceCommand: Command = {
             });
             return;
         }
-        if (
-            !interaction.memberPermissions?.has(
-                PermissionFlagsBits.Administrator,
-            )
-        ) {
-            await notEnoughPermsEmbed(interaction);
-        }
         //? Defering the message after validating
         await interaction.deferReply({
             flags: isPublic ? undefined : MessageFlags.Ephemeral,
         });
         //? Managing DB logic -
         try {
+            const symbol = await getEcoSymbol(guildId);
             await addBalance(userTargetID, guildId, method, amount);
             await sendSimpleEmbed(interaction, {
                 title: "Added balance ✅",

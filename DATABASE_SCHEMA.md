@@ -1,6 +1,6 @@
 # Database Schema (inferred from code)
 
-This document describes the database schema used by the bot based on SQL queries found in `src/bot/services/database/tables/**`.
+This document describes the database schema used by the bot based on SQL queries found in `src/bot/services/database/repository/**`.
 
 > Note: No migrations/DDL (`CREATE TABLE ...`) were found in this repository.  
 > Because of that, types/constraints below are **recommended** and **inferred** from how the code uses PostgreSQL.
@@ -20,8 +20,8 @@ This document describes the database schema used by the bot based on SQL queries
 ### Table: `clients`
 
 Used by:
-- `src/bot/services/database/tables/clients/manager.ts`
-- `src/bot/services/database/tables/clients/transaction.ts`
+- `src/bot/services/database/repository/clients/manager.ts`
+- `src/bot/services/database/repository/clients/transaction.ts`
 
 **Columns**
 
@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS clients (
 ### Table: `cooldowns_table`
 
 Used by:
-- `src/bot/services/database/tables/cooldowns/cd_manager.ts`
+- `src/bot/services/database/repository/cooldowns/cd_manager.ts`
 
 **Columns**
 
@@ -87,10 +87,10 @@ CREATE TABLE IF NOT EXISTS cooldowns_table (
 ### Table: `server_configurations`
 
 Used by:
-- `src/bot/services/database/tables/servers/get_cd_time.ts`
-- `src/bot/services/database/tables/servers/set_cd_time.ts`
-- `src/bot/services/database/tables/servers/get_eco_symbol.ts`
-- `src/bot/services/database/tables/servers/set_eco_symbol.ts`
+- `src/bot/services/database/repository/servers/get_cd_time.ts`
+- `src/bot/services/database/repository/servers/set_cd_time.ts`
+- `src/bot/services/database/repository/servers/get_eco_symbol.ts`
+- `src/bot/services/database/repository/servers/set_eco_symbol.ts`
 
 **Columns**
 
@@ -119,5 +119,7 @@ CREATE TABLE IF NOT EXISTS server_configurations (
 ## Integrity notes
 
 - There are no foreign keys enforced by the code (e.g. `clients.guild_id` → `server_configurations.guild_id`), but you may add them if you want strict relational integrity.
-- `transferSafe(...)` uses a transaction and `SELECT ... FOR UPDATE` on `clients` to prevent race conditions when transferring from `bank`.
+- Every balance change that depends on a balance check runs in one transaction with `SELECT ... FOR UPDATE` (`transferSafe`, `transferInternalSafe`, `applyWalletWager`). `transferSafe` locks both rows ordered by `user_id` to avoid deadlocks.
+- The `/work` cooldown is claimed atomically with `INSERT ... ON CONFLICT DO UPDATE ... WHERE cooldown <= now`, in the same transaction as the payout.
+- Recommended: `CHECK (wallet >= 0)` and `CHECK (bank >= 0)` on `clients` as a last line of defense.
 - If you expect large amounts, keep `BIGINT` for `wallet/bank` and validate limits at the application layer.
