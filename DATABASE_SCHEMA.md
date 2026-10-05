@@ -118,6 +118,27 @@ CREATE TABLE IF NOT EXISTS server_configurations (
 
 ---
 
+## Bot heartbeat
+
+### Table: `bot_heartbeat`
+
+Written by `src/bot/services/heartbeat.ts` every 30 seconds (see `migrations/003_bot_heartbeat.sql`). One row per bot process; rows older than one day are deleted. `beat_at` uses the database clock, so readers can compute the age of a heartbeat in SQL.
+
+| Column | Type | Description |
+|---|---|---|
+| `instance_id` | `TEXT` PK | Random id of the process |
+| `started_at` | `TIMESTAMPTZ` | When the process started |
+| `beat_at` | `TIMESTAMPTZ` | Last heartbeat (`now()` of the database) |
+| `status` | `TEXT` | `starting`, `running` or `stopping` |
+| `discord_ready` | `BOOLEAN` | Discord client is connected |
+| `ping_ms` | `INTEGER` | Gateway latency, null before the first heartbeat |
+| `guilds`, `users` | `INTEGER` | Servers and approximate members (sum of `memberCount`) |
+| `version`, `environment` | `TEXT` | `package.json` version and `NODE_ENV` |
+| `rss_mb` | `INTEGER` | Process memory |
+| `last_event_at`, `last_event` | `TIMESTAMPTZ`, `TEXT` | Last relevant event (`command`, `guild_join`, `guild_leave`) |
+
+---
+
 ## Integrity notes
 
 - There are no foreign keys enforced by the code (e.g. `clients.guild_id` → `server_configurations.guild_id`), but you may add them if you want strict relational integrity.

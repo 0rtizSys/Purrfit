@@ -90,6 +90,18 @@ npm start                  # applies migrations, then starts the bot
 
 `npm run deploy-commands` registers the public commands **globally**, so they work in every server that adds Purrfit, and registers developer commands only in `GUILD_ID`. Run it again whenever you add or change a command.
 
+## Website (public frontend)
+
+`src/web/` is the **public frontend** of the website: plain HTML, CSS and JavaScript (no framework, no build step) for the landing page, the login page, the dashboard and the legal pages. It is only a client: it calls an HTTP API and holds no server logic, queries or secrets.
+
+The server that serves it and implements that API (Discord sign-in, sessions, dashboard data) is **not part of this repository**. It is a separate, private project. What this repository gives it:
+
+- **Frontend files** in `src/web/` and the legal documents in `docs/` (the backend reads the `_Version:` line of each document, so **bump it whenever a document changes in a way users must re-accept**).
+- **Bot heartbeat**: the bot writes its own health into the `bot_heartbeat` table every 30 s (`src/bot/services/heartbeat.ts`, migration `003`). A web server being up does not mean the bot is up; readers must use this heartbeat.
+- **Market snapshot**: `npm run worker:market` publishes the simulated prices to `data/market.json` every 2 minutes, using the same function as `/crypto market` ([`src/shared/`](./src/shared)).
+
+`src/shared/tests/frontend-boundary.test.ts` fails the build if server code, secrets, SQL, source maps or browser-side session storage ever end up in `src/web/`.
+
 ## Configuration
 
 See [`.env.example`](./.env.example). Required: `TOKEN`, `CLIENT_ID`, `OWNER_ID`, `DATABASE_URL` (and `GUILD_ID` for the developer command).
@@ -100,6 +112,7 @@ Optional:
 - `ERROR_WEBHOOK_URL`: a Discord webhook that receives error alerts (throttled to one every 10 seconds).
 - `LOG_LEVEL`: `debug`, `info`, `warn` or `error`.
 - `SUPPORT_URL`, `PRIVACY_URL`, `TERMS_URL`: links shown in `/help`.
+- `MARKET_SNAPSHOT_PATH`: where the market worker writes the price snapshot (default `data/market.json`).
 - `DISABLE_JOBS=true`: stops an instance from running background jobs.
 
 ## Database
@@ -145,6 +158,8 @@ src/
       jobs/               background scheduler
       logger.ts, rate_limit.ts
     tests/                unit tests and tests/integration (Postgres)
+  shared/                 what the bot publishes for other services (market worker, snapshot)
+  web/                    public frontend only (index, login, dashboard, legal; css/, js/)
 docs/                     Privacy Policy and Terms of Service
 ```
 

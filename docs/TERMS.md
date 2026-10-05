@@ -1,12 +1,12 @@
 # Purrfit Terms of Service
 
-_Last updated: 2026-10-05_
+_Version: 2.0 · Last updated: 2026-10-05_
 
-By adding Purrfit to a server or using its commands, you agree to these terms.
+By adding Purrfit to a server, using its commands or signing in to its website, you agree to these terms.
 
 ## 1. The service
 
-Purrfit is a Discord bot that provides a simulated economy: work rewards, wallets and banks, interest, taxes, simulated cryptocurrencies and games of chance with fictional money.
+Purrfit is a Discord bot that provides a simulated economy: work rewards, wallets and banks, interest, taxes, simulated cryptocurrencies and games of chance with fictional money. It also has a website where you can sign in with Discord and see the status of the bot.
 
 ## 2. No real value
 
@@ -17,7 +17,7 @@ All currency, coins, balances and prices in Purrfit are fictional. They have **n
 You agree not to:
 
 - exploit bugs, race conditions or automation (self-bots, scripts) to gain balance;
-- spam commands or try to overload the bot;
+- spam commands or try to overload the bot or the website;
 - use the bot to harass other users;
 - break Discord's Terms of Service or Community Guidelines.
 
@@ -27,18 +27,27 @@ Please report bugs through the support server instead of exploiting them. Balanc
 
 Admins can change their server's economy settings and add balance. Each server's economy is independent, and the bot owner is not responsible for how admins manage it.
 
-## 5. Availability
+## 5. The website and your account
 
-Purrfit is provided "as is", without warranties. It may be changed, paused or discontinued at any time, and data may be lost (for example after a failure or a reset of the economy). We are not liable for any loss of fictional balances.
+- You sign in only with Discord. You are responsible for your Discord account and for what happens in your session. Sign out on devices you do not control.
+- You must accept these terms and the Privacy Policy to register. If they change in a way that needs it, you will be asked to accept the new version to keep using the dashboard.
+- Some information, such as detailed bot activity, is available only to the administrators of Purrfit. Having an account does not give you access to it.
+- Do not try to access accounts, sessions or data that are not yours, to bypass the website's protections or to test its security without permission. If you find a security problem, report it through the support server and give us time to fix it.
+- We may limit or suspend access to the website for abuse or to protect the service.
+- You can delete your website account at any time from the dashboard.
 
-## 6. Privacy
+## 6. Availability
 
-See the [Privacy Policy](./PRIVACY.md) for what data the bot stores and how to delete it.
+Purrfit is provided "as is", without warranties. It may be changed, paused or discontinued at any time, and data may be lost (for example after a failure or a reset of the economy). The status shown on the website is informational and may be delayed or wrong. We are not liable for any loss of fictional balances.
 
-## 7. Changes
+## 7. Privacy
 
-These terms may be updated. The date at the top shows the latest version; continuing to use the bot means you accept it.
+See the [Privacy Policy](./PRIVACY.md) for what data the bot and the website store and how to delete it.
 
-## 8. Contact
+## 8. Changes
 
-Use the support server linked in `/help`.
+These terms may be updated. The version and the date at the top show the latest one; continuing to use the bot or the website means you accept it.
+
+## 9. Contact
+
+Use the support server linked in `/help` and on the website.

@@ -34,18 +34,8 @@ services:
         condition: service_healthy
     stop_grace_period: 15s
 
-  # The website will go here as its own service, sharing the same database, e.g.:
-  # web:
-  #   build: ./web
-  #   restart: unless-stopped
-  #   env_file: .env
-  #   environment:
-  #     DATABASE_URL: postgres://purrfit:${POSTGRES_PASSWORD:-purrfit}@db:5432/purrfit
-  #   ports:
-  #     - "3000:3000"
-  #   depends_on:
-  #     db:
-  #       condition: service_healthy
+  # The website (its server) is a separate, private project and is deployed on its own.
+  # It only needs the same DATABASE_URL; this repository publishes just the frontend files.
 
 volumes:
   pgdata:

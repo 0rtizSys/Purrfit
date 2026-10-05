@@ -10,6 +10,7 @@ import { cmds } from "./syncer";
 import { logger } from "./services/logger";
 import { RateLimiter } from "./services/rate_limit";
 import { Scheduler } from "./services/jobs/scheduler";
+import { Heartbeat } from "./services/heartbeat";
 import { pool } from "./services/database/db";
 import {
     internalErrorEmbed,
@@ -30,6 +31,7 @@ const sweepTimer = setInterval(() => rateLimiter.sweep(), 60_000);
 sweepTimer.unref();
 
 const scheduler = new Scheduler();
+const heartbeat = new Heartbeat(client);
 
 client.once(Events.ClientReady, (ready) => {
     logger.info(`Bot listo como ${ready.user.tag}`, {
@@ -44,9 +46,11 @@ client.once(Events.ClientReady, (ready) => {
     });
 
     if (process.env.DISABLE_JOBS !== "true") scheduler.start();
+    heartbeat.markRunning();
 });
 
 client.on(Events.GuildCreate, (guild) => {
+    heartbeat.noteEvent("guild_join");
     logger.info("Agregado a un servidor", {
         guildId: guild.id,
         members: guild.memberCount,
@@ -54,6 +58,7 @@ client.on(Events.GuildCreate, (guild) => {
 });
 
 client.on(Events.GuildDelete, (guild) => {
+    heartbeat.noteEvent("guild_leave");
     logger.info("Eliminado de un servidor", { guildId: guild.id });
 });
 
@@ -81,6 +86,7 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
         return;
     }
 
+    heartbeat.noteEvent("command");
     try {
         await command.execute!(interaction);
     } catch (error) {
@@ -119,6 +125,7 @@ async function shutdown(signal: string) {
     force.unref();
     try {
         await scheduler.stop();
+        await heartbeat.stop();
         await client.destroy();
         await pool.end();
     } catch (error) {
@@ -133,6 +140,7 @@ if (!process.env.TOKEN) {
     logger.error("Falta la variable TOKEN");
     process.exit(1);
 }
+heartbeat.start();
 client.login(process.env.TOKEN).catch((error) => {
     logger.error("No se pudo iniciar sesión en Discord", { error });
     process.exit(1);

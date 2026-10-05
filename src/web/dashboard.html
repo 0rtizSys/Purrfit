@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="es">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Panel — Purrfit</title>
+        <meta name="robots" content="noindex" />
+        <meta name="theme-color" content="#07090a" />
+        <link rel="icon" href="/assets/images/purrfit_pfp.jpg" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Inter:wght@400;500;600&display=swap"
+        />
+        <link rel="stylesheet" href="/css/styles.css" />
+    </head>
+    <body class="dash-page">
+        <div class="bg-glow" aria-hidden="true"></div>
+
+        <header class="nav scrolled">
+            <a class="brand" href="/">
+                <img
+                    src="/assets/images/purrfit_pfp.jpg"
+                    alt=""
+                    width="32"
+                    height="32"
+                />
+                <span>Purrfit</span>
+            </a>
+            <nav>
+                <a href="#estado">Estado</a>
+                <a href="#actividad" id="nav-activity" hidden>Actividad</a>
+                <a href="#cuenta">Cuenta</a>
+                <button
+                    class="btn btn-small btn-ghost"
+                    id="logout"
+                    type="button"
+                >
+                    Cerrar sesión
+                </button>
+            </nav>
+        </header>
+
+        <main class="dash">
+            <h1>Panel</h1>
+            <p class="toast" id="toast" role="status" hidden></p>
+
+            <section class="panel" id="legal-gate" hidden>
+                <h2>Antes de continuar</h2>
+                <p class="lead">
+                    Actualizamos nuestros documentos. Para seguir usando el
+                    panel debes aceptar las versiones actuales:
+                </p>
+                <ul id="legal-docs"></ul>
+                <label class="check">
+                    <input type="checkbox" id="legal-check" />
+                    <span>He leído y acepto los documentos indicados.</span>
+                </label>
+                <button class="btn" id="legal-accept" type="button" disabled>
+                    Aceptar y continuar
+                </button>
+            </section>
+
+            <div id="content" hidden>
+                <section class="panel" id="estado">
+                    <h2>Estado del bot</h2>
+                    <div class="status">
+                        <span class="dot unknown" id="status-dot"></span>
+                        <div>
+                            <strong id="status-label">Comprobando…</strong>
+                            <small id="status-detail"></small>
+                        </div>
+                    </div>
+                    <dl class="stats-grid" id="status-stats"></dl>
+                </section>
+
+                <section class="panel" id="actividad" hidden>
+                    <h2>Actividad</h2>
+                    <dl class="stats-grid" id="activity-stats"></dl>
+                </section>
+
+                <section class="panel" id="cuenta">
+                    <h2>Cuenta</h2>
+                    <div class="account">
+                        <img
+                            id="acc-avatar"
+                            src="/assets/images/purrfit_pfp.jpg"
+                            alt=""
+                            width="64"
+                            height="64"
+                        />
+                        <div>
+                            <strong id="acc-name"></strong>
+                            <small id="acc-username"></small>
+                        </div>
+                    </div>
+                    <dl class="stats-grid" id="account-stats"></dl>
+                    <div class="actions">
+                        <button
+                            class="btn btn-ghost"
+                            id="revoke-others"
+                            type="button"
+                        >
+                            Cerrar mis otras sesiones
+                        </button>
+                    </div>
+                </section>
+
+                <section class="panel danger" id="peligro">
+                    <h2>Eliminar cuenta web</h2>
+                    <p class="lead">
+                        Borra tu cuenta del sitio web, tus sesiones y tus
+                        aceptaciones. No borra tus datos del bot (usa
+                        <code>/delete_my_data</code> en Discord para eso).
+                    </p>
+                    <label class="field">
+                        Escribe <code>DELETE</code> para confirmar
+                        <input id="delete-confirm" autocomplete="off" />
+                    </label>
+                    <button
+                        class="btn btn-danger"
+                        id="delete-account"
+                        type="button"
+                        disabled
+                    >
+                        Eliminar mi cuenta
+                    </button>
+                </section>
+            </div>
+        </main>
+
+        <footer>
+            <span>© <span id="year"></span> Purrfit</span>
+            <span>
+                <a href="/terms">Términos</a> ·
+                <a href="/privacy">Privacidad</a>
+            </span>
+        </footer>
+
+        <script src="/js/dashboard.js"></script>
+    </body>
+</html>

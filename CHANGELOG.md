@@ -1,5 +1,22 @@
 # Changelog
 
+## [Unreleased]
+Website frontend, bot heartbeat and versioned legal documents. The website's server is a separate, private project.
+
+### ✨ Added
+- `src/web/`: public frontend in vanilla HTML/CSS/JS (gold, money green and black, official PFP in `assets/images/purrfit_pfp.jpg`): landing page (presentation, filterable commands, invite steps, contact), **login page** ("Continue with Discord" plus terms/privacy acceptance), **dashboard** (bot status, account, session and account-deletion actions) and legal pages that render `docs/*.md`. Custom inline SVG icons; animations respect `prefers-reduced-motion`. No inline scripts or styles, no `localStorage`/`sessionStorage`: it works under a strict Content-Security-Policy and keeps all security decisions on the server.
+- **Bot heartbeat**: migration `003_bot_heartbeat.sql` adds `bot_heartbeat`, and `src/bot/services/heartbeat.ts` writes one row per process every 30 s (Discord readiness, latency, guilds, approximate users, version, memory, last event) and marks itself `stopping` on shutdown. A failed write is logged (throttled) and never affects the bot.
+- `src/shared/`: `market_worker.ts` (`npm run worker:market`, `worker:market:dev`) publishes the simulated prices to `data/market.json` every 2 minutes using `listMarket()`; `market_snapshot.ts` with tests.
+- `src/shared/tests/frontend-boundary.test.ts`: fails if server code, secrets, SQL, source maps, inline scripts or browser-side session storage appear in `src/web/`.
+- Unit tests for the heartbeat.
+
+### ♻ changes
+- **Terms of Service and Privacy Policy 2.0**: now cover the website (Discord sign-in with the `identify` scope only, session and sign-in cookies, stored data, logs, retention, third parties, deleting the web account) and carry a `_Version:` line that the website backend records as the version a user accepted.
+- `.gitignore` ignores `data/`, source maps and server directories, so backend code cannot be committed here by accident.
+
+### 🔒 Security
+- The website's server code is **not** in this repository (it is public). An earlier local draft of `src/web/server.js` and `src/shared/invite.config.json` was removed before it was ever pushed.
+
 ## [2.1.0] - 2026-10-05
 UI/UX overhaul: one visual system for every embed.
 
