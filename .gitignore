@@ -13,3 +13,7 @@ coverage/
 .idea/
 .DS_Store
 .codex/
+
+.claude
+.agents
+skills-lock.json
