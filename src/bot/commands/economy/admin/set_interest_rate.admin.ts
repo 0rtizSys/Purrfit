@@ -9,6 +9,7 @@ import { requireGuild } from "../../../Helpers/require_guild";
 import {
     internalErrorEmbed,
     notEnoughPermsEmbed,
+    sendErrorEmbed,
     sendSimpleEmbed,
 } from "../../../Helpers/simplified_embed_builder";
 import {
@@ -21,6 +22,7 @@ import {
     percentToBps,
 } from "../../../services/economy/policy";
 import { logger } from "../../../services/logger";
+import { Emoji } from "../../../ui/theme";
 
 export const setInterestRateAdmin: Command = {
     data: new SlashCommandBuilder()
@@ -50,12 +52,11 @@ export const setInterestRateAdmin: Command = {
         const percent = interaction.options.getNumber("percent", true);
         const bps = percentToBps(percent);
         if (!Number.isFinite(percent) || bps < 0 || bps > MAX_INTEREST_BPS) {
-            await sendSimpleEmbed(interaction, {
-                title: "✖️ Error",
-                description: "The rate must be between `0` and `5` percent.",
-                thumType: "error",
-                eph: true,
-            });
+            await sendErrorEmbed(
+                interaction,
+                "Invalid rate",
+                "The rate must be between `0%` and `5%`.",
+            );
             return;
         }
         const guildId = interaction.guild!.id;
@@ -63,9 +64,11 @@ export const setInterestRateAdmin: Command = {
             const before = await getEconomySettings(guildId);
             await setInterestRate(guildId, bps);
             await sendSimpleEmbed(interaction, {
-                title: "⚙️ Configuration saved",
-                description: `Old interest rate: \`${formatBps(before.interestBps)}\`\nNew interest rate: \`${formatBps(bps)}\``,
-                thumType: "success",
+                title: `${Emoji.settings} Bank interest updated`,
+                description: `\`${formatBps(before.interestBps)}\` → \`${formatBps(bps)}\``,
+                author: interaction.user,
+                tone: "admin",
+                timestamp: true,
             });
         } catch (error) {
             logger.error("Error en comando set_interest_rate", { error });

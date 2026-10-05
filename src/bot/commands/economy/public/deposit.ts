@@ -24,6 +24,8 @@ import {
 
 import { transferInternalSafe } from "../../../services/database/repository/clients/withdraw-transfer";
 import { logger } from "../../../services/logger";
+import { Emoji } from "../../../ui/theme";
+import { headline, moneyText } from "../../../ui/format";
 
 export const depositCommand: Command = {
     data: new SlashCommandBuilder()
@@ -77,10 +79,11 @@ export const depositCommand: Command = {
                 return;
             }
             await sendSimpleEmbed(interaction, {
-                title: "Deposit completed ✅ ",
-                description: isPublic
-                    ? `Successfully deposit \`${ecoSymbol} ${amount}\` from your wallet`
-                    : `${interaction.user} You have successfully deposit \`${ecoSymbol} ${amount}\` from your wallet`,
+                author: interaction.user,
+                title: `${Emoji.bank} Deposit complete`,
+                description: `${headline(moneyText(ecoSymbol, amount))}\nMoved from your ${Emoji.wallet} wallet to your ${Emoji.bank} bank.`,
+                tone: "success",
+                timestamp: true,
             });
         } catch (e) {
             logger.error("Error en comando deposit", { error: e });

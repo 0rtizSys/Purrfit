@@ -2,7 +2,6 @@ import {
     Client,
     GatewayIntentBits,
     Events,
-    MessageFlags,
     ActivityType,
     Interaction,
 } from "discord.js";
@@ -12,6 +11,12 @@ import { logger } from "./services/logger";
 import { RateLimiter } from "./services/rate_limit";
 import { Scheduler } from "./services/jobs/scheduler";
 import { pool } from "./services/database/db";
+import {
+    internalErrorEmbed,
+    sendSimpleEmbed,
+} from "./Helpers/simplified_embed_builder";
+import { Emoji } from "./ui/theme";
+import { relativeTime } from "./ui/format";
 
 dotenv.config({ quiet: true });
 
@@ -67,12 +72,12 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
         interaction.commandName,
     );
     if (!limit.allowed) {
-        await interaction
-            .reply({
-                content: `⏳ Slow down! Try again in ${Math.ceil(limit.retryAfterMs / 1000)}s.`,
-                flags: MessageFlags.Ephemeral,
-            })
-            .catch(() => undefined);
+        await sendSimpleEmbed(interaction, {
+            title: `${Emoji.cooldown} Slow down`,
+            description: `You're using commands too fast. Try again ${relativeTime(Date.now() + limit.retryAfterMs)}.`,
+            tone: "cooldown",
+            eph: true,
+        }).catch(() => undefined);
         return;
     }
 
@@ -86,17 +91,7 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
         //? The error reply itself can fail (expired or already answered
         //? interaction); that must never escape this handler
         try {
-            if (interaction.replied || interaction.deferred) {
-                await interaction.followUp({
-                    content: "❌ Error ejecutando comando",
-                    flags: MessageFlags.Ephemeral,
-                });
-            } else {
-                await interaction.reply({
-                    content: "❌ Error ejecutando comando",
-                    flags: MessageFlags.Ephemeral,
-                });
-            }
+            await internalErrorEmbed(interaction);
         } catch (replyError) {
             logger.warn("No se pudo responder al error", { error: replyError });
         }

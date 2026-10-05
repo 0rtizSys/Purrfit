@@ -1,5 +1,37 @@
 # Changelog
 
+## [2.1.0] - 2026-10-05
+UI/UX overhaul: one visual system for every embed.
+
+### ✨ Added
+- `src/bot/ui/theme.ts`: tone palette (`brand` gold `#F1C40F`, `success` `#2ECC71`, `error` `#E74C3C`, `cooldown` `#5DADE2`, `crypto` `#9B59B6`, `admin` `#5865F2`, defined in `configs/embed_configs.json`) and a shared `Emoji` vocabulary.
+- `src/bot/ui/format.ts`: `formatNumber`, `money`/`moneyText` (thousands separators, no space after the symbol), `signedMoney`, `moneyChange` (`` `$100` → `$350` ``), `formatDuration` (`1m 30s`), `relativeTime` (Discord `<t:…:R>`), `formatChange`, `headline` (`###` markdown).
+- `Helpers/balance_embed.ts`: `/wallet_balance` and `/bank_balance` show the requested balance as a headline plus the other balance and the total.
+- `sendErrorEmbed(interaction, title, description, hint?)` and `buildEmbed`.
+- `/help` renders clickable command mentions (`</name:id>`, ids fetched once per process, falls back to `/name`) and lists each `/crypto` subcommand.
+- `/work` flavor lines and a "Next shift" relative time.
+
+### ♻ changes
+- `SimpleEmbedOptions`: `thumType` replaced by `tone`; new `author`, `hint` (`-# 💡` subtext line), `timestamp`, `thumbnail`, `image`, `files`, `color`. Non-error embeds get a "Purrfit" footer with the bot avatar; transactions get a timestamp; the imgur success/error thumbnails were removed.
+- `sendSimpleEmbed`: `tone: "error"` is always ephemeral; an error or `eph` message after a **public** defer deletes the deferred reply and sends a private follow-up instead of showing it to the channel.
+- Every error has a specific title and a fix hint (`InsuficientsFundsEmbed` shows balance, needed amount and shortfall; `SameUserEmbed`, `botTargetEmbed`, `notEnoughPermsEmbed`, `amountErrorEmbed`, `requireGuild`).
+- `/transfer` validates self/bot/amount before deferring, so those errors are always private; success shows From/To and tax/received.
+- `/coinflip` uses the shared insufficient-funds embed; a lost bet is red but public with footer.
+- `/crypto`: market, chart (embed color follows the trend), buy, sell and portfolio (profit vs. cost per coin) use the new layout; `crypto.ts` no longer builds its own `EmbedBuilder`.
+- Admin commands (`/set_cooldown_time`, `/set_economy_symbol`, `/set_tax_rate`, `/set_interest_rate`, `/add_balance`) use the `admin` tone with `old → new` and the acting admin as author; `/add_balance` shows the new balance.
+- `/economy_info` and `/leaderboard` show the server icon; the leaderboard highlights the caller's line.
+- Router: the rate-limit reply and the fallback error are embeds (the Spanish "Error ejecutando comando" text is gone); `/sync_slash_guild` replies in English embeds.
+- `visibility` is optional (default private) on `/wallet_balance` and `/bank_balance`; command and option descriptions were capitalized and reworded.
+- `/ping` defers instead of sending a placeholder text message.
+
+### 🐛 Logic bugs fixed
+- `/bank_balance` read the economy symbol before deferring, so a slow query could expire the interaction.
+- Typos in user-facing text ("successfully deposit", "dont", "comand").
+
+### 🧪 Tests
+- `ui-format.test.ts`: money/duration/timestamp formatting, tone color, footer and hint, ephemeral errors, private follow-up after a public defer.
+- `deposit-withdraw.test.ts` updated for the new titles.
+
 ## [2.0.0] - 2026-10-05
 Public release preparation: global commands, Docker, migrations, advanced economy.
 

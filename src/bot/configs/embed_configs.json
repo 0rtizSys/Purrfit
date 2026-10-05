@@ -1,5 +1,10 @@
 {
-    "embed_conf": {
-        "color": "0xFF69B4"
+    "palette": {
+        "brand": "0xF1C40F",
+        "success": "0x2ECC71",
+        "error": "0xE74C3C",
+        "cooldown": "0x5DADE2",
+        "crypto": "0x9B59B6",
+        "admin": "0x5865F2"
     }
 }

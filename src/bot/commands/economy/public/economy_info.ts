@@ -14,6 +14,8 @@ import {
     MAX_DAILY_INTEREST,
 } from "../../../services/economy/policy";
 import { logger } from "../../../services/logger";
+import { Emoji } from "../../../ui/theme";
+import { formatDuration, money, moneyText } from "../../../ui/format";
 
 export const economyInfoCommand: Command = {
     data: new SlashCommandBuilder()
@@ -33,30 +35,37 @@ export const economyInfoCommand: Command = {
                 getEconomySettings(guildId),
             ]);
             await sendSimpleEmbed(interaction, {
-                title: `🏦 ${interaction.guild!.name} economy`,
+                title: `${Emoji.bank} ${interaction.guild!.name} economy`,
+                description: "How money works in this server.",
+                thumbnail: interaction.guild!.iconURL(),
                 fields: [
-                    { name: "Symbol", value: `\`${symbol}\``, inline: true },
                     {
-                        name: "/work cooldown",
-                        value: `\`${cooldown}s\``,
+                        name: "Currency",
+                        value: `\`${symbol}\``,
                         inline: true,
                     },
                     {
-                        name: "Tax rate",
+                        name: `${Emoji.work} Work cooldown`,
+                        value: `\`${formatDuration(cooldown)}\``,
+                        inline: true,
+                    },
+                    {
+                        name: `${Emoji.tax} Tax rate`,
                         value: `\`${formatBps(settings.taxBps)}\``,
                         inline: true,
                     },
                     {
-                        name: "Bank interest",
-                        value: `\`${formatBps(settings.interestBps)}\` per day (max \`${symbol}${MAX_DAILY_INTEREST}\`)`,
+                        name: `${Emoji.bank} Bank interest`,
+                        value: `\`${formatBps(settings.interestBps)}\` per day\n-# max ${moneyText(symbol, MAX_DAILY_INTEREST)} per day`,
                         inline: true,
                     },
                     {
-                        name: "Treasury",
-                        value: `\`${symbol}${settings.treasury}\``,
+                        name: `${Emoji.total} Treasury`,
+                        value: money(symbol, settings.treasury),
                         inline: true,
                     },
                 ],
+                hint: "Taxes from transfers and crypto sales go to the treasury.",
             });
         } catch (error) {
             logger.error("Error en comando economy_info", { error });

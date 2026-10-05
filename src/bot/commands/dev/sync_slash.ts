@@ -4,7 +4,12 @@ import {
     MessageFlags,
 } from "discord.js";
 import { Command } from "../types";
-import { notEnoughPermsEmbed } from "../../Helpers/simplified_embed_builder";
+import {
+    notEnoughPermsEmbed,
+    sendErrorEmbed,
+    sendSimpleEmbed,
+} from "../../Helpers/simplified_embed_builder";
+import { Emoji } from "../../ui/theme";
 import {
     deployCommands,
     readDeployEnv,
@@ -29,14 +34,30 @@ export const syncSlash: Command = {
 
         try {
             const summary = await deployCommands(readDeployEnv());
-            await interaction.editReply({
-                content: `✅ \`${summary.global}\` comandos globales y \`${summary.guild}\` de desarrollo publicados.`,
+            await sendSimpleEmbed(interaction, {
+                title: `${Emoji.success} Commands deployed`,
+                fields: [
+                    {
+                        name: "Global",
+                        value: `\`${summary.global}\``,
+                        inline: true,
+                    },
+                    {
+                        name: "Dev server",
+                        value: `\`${summary.guild}\``,
+                        inline: true,
+                    },
+                ],
+                hint: "Global commands can take a few minutes to show up everywhere.",
+                tone: "admin",
             });
         } catch (error) {
             logger.error("Error al sincronizar comandos", { error });
-            await interaction.editReply({
-                content: "❌ Error en la sincronización.",
-            });
+            await sendErrorEmbed(
+                interaction,
+                "Deploy failed",
+                "The commands could not be published. Check the bot logs.",
+            );
         }
     },
 };

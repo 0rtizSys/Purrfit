@@ -24,6 +24,8 @@ import {
 
 import { transferInternalSafe } from "../../../services/database/repository/clients/withdraw-transfer";
 import { logger } from "../../../services/logger";
+import { Emoji } from "../../../ui/theme";
+import { headline, moneyText } from "../../../ui/format";
 
 export const withdrawCommand: Command = {
     data: new SlashCommandBuilder()
@@ -77,10 +79,11 @@ export const withdrawCommand: Command = {
                 return;
             }
             await sendSimpleEmbed(interaction, {
-                title: "Withdrawal completed ✅ ",
-                description: isPublic
-                    ? `Successfully withdrawn \`${ecoSymbol} ${amount}\` from your bank account`
-                    : `${interaction.user} You have successfully withdrawn \`${ecoSymbol} ${amount}\` from your bank account`,
+                author: interaction.user,
+                title: `${Emoji.wallet} Withdrawal complete`,
+                description: `${headline(moneyText(ecoSymbol, amount))}\nMoved from your ${Emoji.bank} bank to your ${Emoji.wallet} wallet.`,
+                tone: "success",
+                timestamp: true,
             });
         } catch (e) {
             logger.error("Error en comando withdraw", { error: e });

@@ -1,5 +1,3 @@
-import { embColor, errorIcon, successIcon } from "../configs/exporter";
-
 import {
     EmbedBuilder,
     ChatInputCommandInteraction,
@@ -7,38 +5,101 @@ import {
 } from "discord.js";
 
 import { SimpleEmbedOptions } from "../commands/types";
+import { BOT_NAME, Emoji, toneColor } from "../ui/theme";
+import { money } from "../ui/format";
+
+//?------------------------------------------------------------------
+//? Every embed the bot sends is built here, so they share one look:
+//? tone color, emoji-first title, author for personal results, and a
+//? "Purrfit" footer on everything except errors.
+//?------------------------------------------------------------------
+
+export function buildEmbed(
+    interaction: ChatInputCommandInteraction,
+    options: SimpleEmbedOptions,
+): EmbedBuilder {
+    const tone = options.tone ?? "brand";
+    const embed = new EmbedBuilder().setColor(options.color ?? toneColor(tone));
+
+    if (options.author) {
+        embed.setAuthor({
+            name: options.author.displayName ?? options.author.username,
+            iconURL: options.author.displayAvatarURL?.(),
+        });
+    }
+    if (options.title) embed.setTitle(options.title);
+
+    const description = [
+        options.description,
+        options.hint && `-# ${Emoji.hint} ${options.hint}`,
+    ]
+        .filter(Boolean)
+        .join("\n");
+    if (description) embed.setDescription(description);
+
+    if (options.fields?.length) embed.addFields(options.fields);
+    if (options.thumbnail) embed.setThumbnail(options.thumbnail);
+    if (options.image) embed.setImage(options.image);
+
+    if (tone !== "error") {
+        embed.setFooter({
+            text: BOT_NAME,
+            iconURL: interaction.client?.user?.displayAvatarURL?.(),
+        });
+    }
+    if (options.timestamp) embed.setTimestamp();
+
+    return embed;
+}
 
 export async function sendSimpleEmbed(
     interaction: ChatInputCommandInteraction,
     options: SimpleEmbedOptions,
 ): Promise<void> {
-    const embed = new EmbedBuilder().setColor(embColor);
-
-    if (options.title) {
-        embed.setTitle(options.title);
-    }
-    if (options.description) {
-        embed.setDescription(options.description);
-    }
-
-    if (options.thumType === "error") {
-        embed.setThumbnail(errorIcon);
-    } else if (options.thumType === "success") {
-        embed.setThumbnail(successIcon);
-    }
-
-    if (options.fields) {
-        embed.addFields(options.fields);
-    }
+    const embed = buildEmbed(interaction, options);
+    const isError = options.tone === "error";
+    const wantsPrivate = isError || Boolean(options.eph);
+    const files = options.files ?? [];
 
     if (interaction.deferred || interaction.replied) {
-        await interaction.editReply({ embeds: [embed] });
+        //? A deferred public reply cannot become ephemeral, so an error (or a
+        //? private message) after a public defer replaces it with a private
+        //? follow-up instead of showing it to the whole channel
+        if (wantsPrivate && interaction.deferred && !interaction.ephemeral) {
+            try {
+                await interaction.deleteReply();
+                await interaction.followUp({
+                    embeds: [embed],
+                    flags: MessageFlags.Ephemeral,
+                });
+                return;
+            } catch {
+                //? Fall back to editing the public reply
+            }
+        }
+        await interaction.editReply({ embeds: [embed], files });
     } else {
         await interaction.reply({
             embeds: [embed],
-            flags: options.eph ? MessageFlags.Ephemeral : undefined,
+            files,
+            flags: wantsPrivate ? MessageFlags.Ephemeral : undefined,
         });
     }
+}
+
+/** Shorthand for an error embed: specific title, what happened, how to fix it */
+export async function sendErrorEmbed(
+    interaction: ChatInputCommandInteraction,
+    title: string,
+    description: string,
+    hint?: string,
+): Promise<void> {
+    await sendSimpleEmbed(interaction, {
+        title: `${Emoji.error} ${title}`,
+        description,
+        hint,
+        tone: "error",
+    });
 }
 
 //?-------------------------------
@@ -48,22 +109,12 @@ export async function sendSimpleEmbed(
 export async function internalErrorEmbed(
     interaction: ChatInputCommandInteraction,
 ) {
-    const embed = new EmbedBuilder()
-        .setColor(embColor)
-        .setTitle("✖️ Something went wrong")
-        .setDescription(
-            "An unexpected error occurred while processing your request.\nPlease try again in a moment 💡",
-        )
-        .setThumbnail(errorIcon);
-
-    if (interaction.deferred || interaction.replied) {
-        await interaction.editReply({ embeds: [embed] });
-    } else {
-        await interaction.reply({
-            embeds: [embed],
-            flags: MessageFlags.Ephemeral,
-        });
-    }
+    await sendErrorEmbed(
+        interaction,
+        "Something went wrong",
+        "An unexpected error happened while processing your request. Nothing was changed.",
+        "Try again in a moment.",
+    );
 }
 
 //?---------------------------------
@@ -73,45 +124,25 @@ export async function internalErrorEmbed(
 export async function notEnoughPermsEmbed(
     interaction: ChatInputCommandInteraction,
 ) {
-    const embed = new EmbedBuilder()
-        .setColor(embColor)
-        .setTitle("✖️ Error")
-        .setDescription("Purrfit: You dont have enough perms to do that!")
-        .setThumbnail(errorIcon);
-
-    if (interaction.deferred || interaction.replied) {
-        await interaction.editReply({ embeds: [embed] });
-    } else {
-        await interaction.reply({
-            embeds: [embed],
-            flags: MessageFlags.Ephemeral,
-        });
-    }
+    await sendErrorEmbed(
+        interaction,
+        "Missing permissions",
+        "You need the **Administrator** permission to use this command.",
+    );
 }
 
 //?-----------------------------------
-//? Amount Below 0 or Above 1 Million
+//? Amount Below 1 or Above 1 Billion
 //?-----------------------------------
 
 export async function amountErrorEmbed(
     interaction: ChatInputCommandInteraction,
 ) {
-    const embed = new EmbedBuilder()
-        .setColor(embColor)
-        .setTitle("✖️ Error")
-        .setDescription(
-            "Amount cannot be below \`1\` or above \`1,000,000,000\`",
-        )
-        .setThumbnail(errorIcon);
-
-    if (interaction.deferred || interaction.replied) {
-        await interaction.editReply({ embeds: [embed] });
-    } else {
-        await interaction.reply({
-            embeds: [embed],
-            flags: MessageFlags.Ephemeral,
-        });
-    }
+    await sendErrorEmbed(
+        interaction,
+        "Invalid amount",
+        "The amount must be between `1` and `1,000,000,000`.",
+    );
 }
 
 //?-------------------------
@@ -121,26 +152,27 @@ export async function amountErrorEmbed(
 export async function transactionWentWrong(
     interaction: ChatInputCommandInteraction,
 ) {
-    const embed = new EmbedBuilder()
-        .setColor(embColor)
-        .setTitle("✖️ Transaction went wrong")
-        .setDescription(
-            "An unexpected error occurred while processing your request.\nPlease try again in a moment 💡",
-        )
-        .setThumbnail(errorIcon);
-    if (interaction.deferred || interaction.replied) {
-        await interaction.editReply({ embeds: [embed] });
-    } else {
-        await interaction.reply({
-            embeds: [embed],
-            flags: MessageFlags.Ephemeral,
-        });
-    }
+    await sendErrorEmbed(
+        interaction,
+        "Transaction failed",
+        "The transaction could not be completed. No money was moved.",
+        "Try again in a moment.",
+    );
 }
 
 //?--------------------
 //? Insuficients funds
 //?--------------------
+
+const FUNDS_SOURCE = {
+    withdraw: { label: "Bank", hint: "Check it with `/bank_balance`." },
+    deposit: { label: "Wallet", hint: "Earn more with `/work`." },
+    transfer: {
+        label: "Bank",
+        hint: "Transfers come from your bank. Use `/deposit` first.",
+    },
+    spend: { label: "Wallet", hint: "Earn more with `/work`." },
+} as const;
 
 export async function InsuficientsFundsEmbed(
     interaction: ChatInputCommandInteraction,
@@ -149,21 +181,25 @@ export async function InsuficientsFundsEmbed(
     symbol: string,
     type: "withdraw" | "deposit" | "transfer" | "spend",
 ) {
-    const embed = new EmbedBuilder()
-        .setColor(embColor)
-        .setTitle("✖️ Insufficient funds")
-        .setDescription(
-            `Current balance: \`${symbol} ${currentBalance}\` \nAmount to ${type}: \`${symbol} ${currentAmount}\``,
-        )
-        .setThumbnail(errorIcon);
-    if (interaction.deferred || interaction.replied) {
-        await interaction.editReply({ embeds: [embed] });
-    } else {
-        await interaction.reply({
-            embeds: [embed],
-            flags: MessageFlags.Ephemeral,
-        });
-    }
+    const source = FUNDS_SOURCE[type];
+    await sendSimpleEmbed(interaction, {
+        title: `${Emoji.error} Not enough money`,
+        description: `You tried to ${type} ${money(symbol, currentAmount)} but you are ${money(symbol, currentAmount - currentBalance)} short.`,
+        fields: [
+            {
+                name: source.label,
+                value: money(symbol, currentBalance),
+                inline: true,
+            },
+            {
+                name: "Needed",
+                value: money(symbol, currentAmount),
+                inline: true,
+            },
+        ],
+        hint: source.hint,
+        tone: "error",
+    });
 }
 
 //?------------------
@@ -171,19 +207,12 @@ export async function InsuficientsFundsEmbed(
 //?------------------
 
 export async function SameUserEmbed(interaction: ChatInputCommandInteraction) {
-    const embed = new EmbedBuilder()
-        .setColor(embColor)
-        .setTitle("✖️ Error")
-        .setDescription(`Purrfit: Oops, you cant transfer yourself balance!`)
-        .setThumbnail(errorIcon);
-    if (interaction.deferred || interaction.replied) {
-        await interaction.editReply({ embeds: [embed] });
-    } else {
-        await interaction.reply({
-            embeds: [embed],
-            flags: MessageFlags.Ephemeral,
-        });
-    }
+    await sendErrorEmbed(
+        interaction,
+        "You can't pay yourself",
+        "Pick another member to send money to.",
+        "To move money between your wallet and bank, use `/deposit` or `/withdraw`.",
+    );
 }
 
 //?-------------------
@@ -191,17 +220,9 @@ export async function SameUserEmbed(interaction: ChatInputCommandInteraction) {
 //?-------------------
 
 export async function botTargetEmbed(interaction: ChatInputCommandInteraction) {
-    const embed = new EmbedBuilder()
-        .setColor(embColor)
-        .setTitle("✖️ Error")
-        .setDescription(`Purrfit: Oops, you cant transfer balance to a bot!`)
-        .setThumbnail(errorIcon);
-    if (interaction.deferred || interaction.replied) {
-        await interaction.editReply({ embeds: [embed] });
-    } else {
-        await interaction.reply({
-            embeds: [embed],
-            flags: MessageFlags.Ephemeral,
-        });
-    }
+    await sendErrorEmbed(
+        interaction,
+        "Bots can't hold money",
+        "Pick a human member instead.",
+    );
 }

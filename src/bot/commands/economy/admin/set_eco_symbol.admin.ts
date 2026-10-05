@@ -13,10 +13,12 @@ import {
     sendSimpleEmbed,
     internalErrorEmbed,
     notEnoughPermsEmbed,
+    sendErrorEmbed,
 } from "../../../Helpers/simplified_embed_builder";
 
 import { setEcoSymbol } from "../../../services/database/repository/servers/set_eco_symbol";
 import { logger } from "../../../services/logger";
+import { Emoji } from "../../../ui/theme";
 
 export interface Command {
     data: SlashCommandBuilder | SlashCommandOptionsOnlyBuilder;
@@ -30,12 +32,12 @@ const FORBIDDEN_SYMBOL_CHARS = /[`*_~|\\<>@]/;
 export const setEconomySymbolAdmin: Command = {
     data: new SlashCommandBuilder()
         .setName("set_economy_symbol")
-        .setDescription("set the server economy symbol")
+        .setDescription("Set the currency symbol of this server")
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addStringOption((opt) =>
             opt
                 .setName("symbol")
-                .setDescription("Symbol must be 1 or 2 digits")
+                .setDescription("1 or 2 characters, like $ or 🪙")
                 .setRequired(true)
                 .setMaxLength(2),
         ),
@@ -59,13 +61,11 @@ export const setEconomySymbolAdmin: Command = {
             newSymbol.length === 0 ||
             FORBIDDEN_SYMBOL_CHARS.test(newSymbol)
         ) {
-            await sendSimpleEmbed(interaction, {
-                title: "✖️ Error",
-                description:
-                    "Symbol length must be 1 or 2 digits and cannot contain markdown or mention characters",
-                thumType: "error",
-                eph: true,
-            });
+            await sendErrorEmbed(
+                interaction,
+                "Invalid symbol",
+                "The symbol must be 1 or 2 characters and cannot contain markdown or mention characters (`` ` * _ ~ | \\ < > @ ``).",
+            );
             return;
         }
         try {
@@ -73,10 +73,11 @@ export const setEconomySymbolAdmin: Command = {
             if (!(await setEcoSymbol(guildId, newSymbol)))
                 throw new Error("Failure on function setEcoSymbol");
             await sendSimpleEmbed(interaction, {
-                title: "⚙️ Configuration saved",
-                description: `Old symbol: \`${oldSymbol}\`\nNew symbol: \`${newSymbol}\``,
-                thumType: "success",
-                eph: false,
+                title: `${Emoji.settings} Currency symbol updated`,
+                description: `\`${oldSymbol}\` → \`${newSymbol}\``,
+                author: interaction.user,
+                tone: "admin",
+                timestamp: true,
             });
         } catch (e) {
             logger.error("Error en comando set_economy_symbol", { error: e });

@@ -13,6 +13,8 @@ import {
     LeaderboardSort,
 } from "../../../services/database/repository/clients/leaderboard";
 import { logger } from "../../../services/logger";
+import { Emoji } from "../../../ui/theme";
+import { money } from "../../../ui/format";
 
 const MEDALS = ["🥇", "🥈", "🥉"];
 
@@ -44,20 +46,24 @@ export const leaderboardCommand: Command = {
                 getUserRank(interaction.user.id, guildId, sort),
                 getEcoSymbol(guildId),
             ]);
+            const label = `${sort[0].toUpperCase()}${sort.slice(1)}`;
             const lines = entries.map((entry, i) => {
                 const position = MEDALS[i] ?? `\`#${i + 1}\``;
+                const isCaller = entry.userId === interaction.user.id;
                 //? Mentions inside embeds render as names and never ping
-                return `${position} <@${entry.userId}> · \`${symbol}${entry[sort]}\``;
+                const line = `${position} <@${entry.userId}> · ${money(symbol, entry[sort])}`;
+                return isCaller ? `**${line}** ← you` : line;
             });
             await sendSimpleEmbed(interaction, {
-                title: `🏆 Leaderboard · ${sort[0].toUpperCase()}${sort.slice(1)}`,
+                title: `${Emoji.trophy} ${interaction.guild!.name} leaderboard`,
                 description: lines.length
-                    ? lines.join("\n")
+                    ? `Ranked by **${label}**\n\n${lines.join("\n")}`
                     : "Nobody has money yet. Use `/work` to get started!",
+                thumbnail: interaction.guild!.iconURL(),
                 fields: [
                     {
-                        name: "Your rank",
-                        value: rank ? `#${rank}` : "Not ranked yet",
+                        name: `${Emoji.rank} Your rank`,
+                        value: rank ? `**#${rank}**` : "Not ranked yet",
                     },
                 ],
             });

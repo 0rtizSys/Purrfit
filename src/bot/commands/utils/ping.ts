@@ -1,31 +1,27 @@
 import { SlashCommandBuilder, ChatInputCommandInteraction } from "discord.js";
 
 import { sendSimpleEmbed } from "../../Helpers/simplified_embed_builder";
-
-export interface Command {
-    data: SlashCommandBuilder;
-    execute: (interaction: ChatInputCommandInteraction) => Promise<void>;
-}
+import { Command } from "../types";
 
 export const pingSlash: Command = {
     data: new SlashCommandBuilder()
         .setName("ping")
-        .setDescription("Sends bot latency"),
+        .setDescription("Check the bot latency"),
 
     async execute(interaction: ChatInputCommandInteraction) {
-        await interaction.reply({
-            content: "🏓 pinging...",
-        });
+        await interaction.deferReply();
         const sent = await interaction.fetchReply();
         const ping = sent.createdTimestamp - interaction.createdTimestamp;
+        const api = interaction.client.ws.ping;
 
         await sendSimpleEmbed(interaction, {
-            title: "Pong 🏓",
+            title: "🏓 Pong!",
             fields: [
-                { name: "Latency", value: `${ping}ms 📶`, inline: true },
+                { name: "📶 Bot", value: `\`${ping}ms\``, inline: true },
+                //? ws.ping is -1 until the first heartbeat after login
                 {
-                    name: "API",
-                    value: `${interaction.client.ws.ping}ms 🛜`,
+                    name: "🛜 Discord API",
+                    value: api >= 0 ? `\`${api}ms\`` : "`measuring…`",
                     inline: true,
                 },
             ],

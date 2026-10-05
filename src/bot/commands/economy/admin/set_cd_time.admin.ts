@@ -16,10 +16,13 @@ import {
     sendSimpleEmbed,
     internalErrorEmbed,
     notEnoughPermsEmbed,
+    sendErrorEmbed,
 } from "../../../Helpers/simplified_embed_builder";
 
 import { requireGuild } from "../../../Helpers/require_guild";
 import { logger } from "../../../services/logger";
+import { Emoji } from "../../../ui/theme";
+import { formatDuration } from "../../../ui/format";
 
 export interface Command {
     data: SlashCommandBuilder | SlashCommandOptionsOnlyBuilder;
@@ -29,12 +32,12 @@ export interface Command {
 export const setCdTimeAdmin: Command = {
     data: new SlashCommandBuilder()
         .setName("set_cooldown_time")
-        .setDescription("change the cooldown time for the command work")
+        .setDescription("Change the /work cooldown (in seconds)")
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addIntegerOption((opt) =>
             opt
                 .setName("time")
-                .setDescription("Use seconds to avoid any problems")
+                .setDescription("Cooldown in seconds (e.g. 3600 = 1 hour)")
                 .setRequired(true)
                 .setMinValue(1)
                 .setMaxValue(MAX_COOLDOWN_SECONDS),
@@ -52,12 +55,11 @@ export const setCdTimeAdmin: Command = {
         const guildId = interaction.guild!.id;
         const newTime = interaction.options.getInteger("time", true);
         if (newTime <= 0 || newTime > MAX_COOLDOWN_SECONDS) {
-            await sendSimpleEmbed(interaction, {
-                title: "✖️ Error",
-                description: `Time must be between \`1\` and \`${MAX_COOLDOWN_SECONDS}\` seconds`,
-                thumType: "error",
-                eph: true,
-            });
+            await sendErrorEmbed(
+                interaction,
+                "Invalid cooldown",
+                `The cooldown must be between \`1s\` and \`${formatDuration(MAX_COOLDOWN_SECONDS)}\`.`,
+            );
             return;
         }
         await interaction.deferReply();
@@ -66,9 +68,11 @@ export const setCdTimeAdmin: Command = {
             if (await setCdTime(guildId, newTime))
                 throw new Error("Failure on function setCdTime");
             await sendSimpleEmbed(interaction, {
-                title: "⚙️ Configurations saved",
-                description: `Old cooldown time: \`${oldTime}s\`\nNew cooldown time: \`${newTime}s\``,
-                thumType: "success",
+                title: `${Emoji.settings} Work cooldown updated`,
+                description: `\`${formatDuration(oldTime)}\` → \`${formatDuration(newTime)}\``,
+                author: interaction.user,
+                tone: "admin",
+                timestamp: true,
             });
         } catch (err) {
             logger.error("Error en comando set_cooldown_time", { error: err });
