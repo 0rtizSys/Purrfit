@@ -12,11 +12,14 @@ import {
     sendSimpleEmbed,
     internalErrorEmbed,
     notEnoughPermsEmbed,
+    sendErrorEmbed,
 } from "../../../Helpers/simplified_embed_builder";
 
 import { requireGuild } from "../../../Helpers/require_guild";
 import { getEcoSymbol } from "../../../services/database/repository/servers/get_eco_symbol";
 import { logger } from "../../../services/logger";
+import { Emoji } from "../../../ui/theme";
+import { headline, money, moneyText } from "../../../ui/format";
 
 export interface Command {
     data: SlashCommandBuilder | SlashCommandOptionsOnlyBuilder;
@@ -26,13 +29,13 @@ export interface Command {
 export const addBalanceCommand: Command = {
     data: new SlashCommandBuilder()
         .setName("add_balance")
-        .setDescription("Add balance to an user wallet or bank")
+        .setDescription("Add money to a member's wallet or bank")
         //? Hidden from non-admins in Discord; the runtime check below still applies
         .setDefaultMemberPermissions(PermissionFlagsBits.Administrator)
         .addStringOption((opt) =>
             opt
                 .setName("method")
-                .setDescription("Add balance to wallet or bank")
+                .setDescription("Where the money goes")
                 .setRequired(true)
                 .addChoices(
                     { name: "Wallet", value: "wallet" },
@@ -83,35 +86,28 @@ export const addBalanceCommand: Command = {
         const guildId = interaction.guild!.id;
         //! IMPORTANT VALIDATIONS
         if (method !== "wallet" && method !== "bank") {
-            await sendSimpleEmbed(interaction, {
-                title: "✖️ Error",
-                description: "Method must be `wallet` or `bank`",
-                thumType: "error",
-                eph: true,
-            });
+            await sendErrorEmbed(
+                interaction,
+                "Invalid method",
+                "Choose `Wallet` or `Bank`.",
+            );
             return;
         }
         if (amount <= 0 || amount > maxAmount) {
-            await sendSimpleEmbed(interaction, {
-                title: "✖️ Error",
-                description:
-                    "Amount cannot be below \`1\` or above \`1,000,000,000\`",
-                thumType: "error",
-                fields: [
-                    {
-                        name: "Hint 💡",
-                        value: "Try smaller values like \`1,000\` or \`10,000\`",
-                    },
-                ],
-            });
+            await sendErrorEmbed(
+                interaction,
+                "Invalid amount",
+                "The amount must be between `1` and `1,000,000,000`.",
+                "Try smaller values like `1,000` or `10,000`.",
+            );
             return;
         }
         if (userTarget.bot) {
-            await sendSimpleEmbed(interaction, {
-                title: "✖️You dont have enough perms to do that! 😥 Error",
-                description: "Purrfit: Why would you add balance to Bots?! 😥",
-                thumType: "error",
-            });
+            await sendErrorEmbed(
+                interaction,
+                "Bots can't hold money",
+                "Pick a human member instead.",
+            );
             return;
         }
         //? Defering the message after validating
@@ -121,11 +117,29 @@ export const addBalanceCommand: Command = {
         //? Managing DB logic -
         try {
             const symbol = await getEcoSymbol(guildId);
-            await addBalance(userTargetID, guildId, method, amount);
+            const newBalance = await addBalance(
+                userTargetID,
+                guildId,
+                method,
+                amount,
+            );
+            const place =
+                method === "wallet"
+                    ? `${Emoji.wallet} Wallet`
+                    : `${Emoji.bank} Bank`;
             await sendSimpleEmbed(interaction, {
-                title: "Added balance ✅",
-                description: `${interaction.user} Added \`${symbol} ${amount}\` to ${userTarget} 💳`,
-                thumType: "success",
+                author: interaction.user,
+                title: `${Emoji.settings} Balance added`,
+                description: `${headline(`+${moneyText(symbol, amount)}`)}\nAdded to ${userTarget}'s ${method}.`,
+                fields: [
+                    {
+                        name: `${place} now`,
+                        value: money(symbol, newBalance),
+                        inline: true,
+                    },
+                ],
+                tone: "admin",
+                timestamp: true,
             });
         } catch (error) {
             logger.error("Error en comando add_balance", { error: error });

@@ -1,7 +1,6 @@
 import {
     AttachmentBuilder,
     ChatInputCommandInteraction,
-    EmbedBuilder,
     MessageFlags,
     SlashCommandBuilder,
 } from "discord.js";
@@ -11,6 +10,7 @@ import { requireGuild } from "../../../Helpers/require_guild";
 import {
     internalErrorEmbed,
     InsuficientsFundsEmbed,
+    sendErrorEmbed,
     sendSimpleEmbed,
 } from "../../../Helpers/simplified_embed_builder";
 import {
@@ -35,8 +35,9 @@ import {
     formatPrice,
     renderPriceChart,
 } from "../../../services/charts/price_chart";
-import { embColor } from "../../../configs/exporter";
 import { logger } from "../../../services/logger";
+import { Emoji, toneColor } from "../../../ui/theme";
+import { formatChange, headline, money, moneyText } from "../../../ui/format";
 
 //? Must match the coins seeded in migrations/002_advanced_economy.sql
 const COIN_CHOICES = [
@@ -52,34 +53,36 @@ const RANGE_CHOICES = (Object.keys(CHART_RANGES) as ChartRange[]).map((r) => ({
     value: r,
 }));
 
-function formatChange(change: number): string {
-    const arrow = change >= 0 ? "🟢 ▲" : "🔴 ▼";
-    return `${arrow} ${Math.abs(change).toFixed(2)}%`;
-}
-
 function trimQuantity(quantity: string): string {
     return quantity.includes(".") ? quantity.replace(/\.?0+$/, "") : quantity;
 }
 
 const UNKNOWN_COIN = {
-    title: "✖️ Unknown coin",
-    description: "Use `/crypto market` to see the available coins.",
-    thumType: "error" as const,
+    title: `${Emoji.error} Unknown coin`,
+    description: "That coin is not listed on the market.",
+    hint: "Use `/crypto market` to see the available coins.",
+    tone: "error" as const,
 };
+
+const price = (symbol: string, value: number) =>
+    `\`${symbol}${formatPrice(value)}\``;
 
 async function market(interaction: ChatInputCommandInteraction) {
     await interaction.deferReply();
     const assets = await listMarket();
     const symbol = await getEcoSymbol(interaction.guild!.id);
     await sendSimpleEmbed(interaction, {
-        title: "📈 Purrfit Crypto Market",
+        title: `${Emoji.crypto} Crypto market`,
         description:
-            "Simulated coins: prices move every 5 minutes and are the same in every server.",
+            "Simulated coins. Prices move every 5 minutes and are the same in every server.",
         fields: assets.map((a) => ({
-            name: `${a.name} (${a.symbol})`,
-            value: `\`${symbol}${formatPrice(a.price)}\`\n24h: ${formatChange(percentChange(a.price24hAgo, a.price))}`,
+            name: `${a.name} · ${a.symbol}`,
+            value: `**${symbol}${formatPrice(a.price)}**\n${formatChange(percentChange(a.price24hAgo, a.price))} \`24h\``,
             inline: true,
         })),
+        hint: "See the trend with `/crypto chart`, trade with `/crypto buy`.",
+        tone: "crypto",
+        timestamp: true,
     });
 }
 
@@ -88,12 +91,11 @@ async function chart(interaction: ChatInputCommandInteraction) {
     const range = (interaction.options.getString("range") ??
         "24h") as ChartRange;
     if (!(range in CHART_RANGES)) {
-        await sendSimpleEmbed(interaction, {
-            title: "✖️ Invalid range",
-            description: "Choose `1h`, `24h`, `7d` or `30d`.",
-            thumType: "error",
-            eph: true,
-        });
+        await sendErrorEmbed(
+            interaction,
+            "Invalid range",
+            "Choose `1h`, `24h`, `7d` or `30d`.",
+        );
         return;
     }
     await interaction.deferReply();
@@ -110,15 +112,17 @@ async function chart(interaction: ChatInputCommandInteraction) {
         history.points,
     );
     const file = new AttachmentBuilder(png, { name: "chart.png" });
-    const embed = new EmbedBuilder()
-        .setColor(embColor)
-        .setTitle(`📊 ${history.name} (${coin})`)
-        .setDescription(
-            `Price: \`${symbol}${formatPrice(last.price)}\`\n${range}: ${formatChange(percentChange(first.price, last.price))}`,
-        )
-        .setImage("attachment://chart.png")
-        .setFooter({ text: "Simulated market · times in UTC" });
-    await interaction.editReply({ embeds: [embed], files: [file] });
+    const change = percentChange(first.price, last.price);
+    await sendSimpleEmbed(interaction, {
+        title: `${Emoji.chart} ${history.name} · ${coin}`,
+        description: `${headline(`${symbol}${formatPrice(last.price)}`)}\n${formatChange(change)} in the last \`${range}\``,
+        image: "attachment://chart.png",
+        files: [file],
+        tone: "crypto",
+        //? The embed takes the same green/red as the chart line
+        color: toneColor(change >= 0 ? "success" : "error"),
+        hint: "Simulated market · chart times in UTC",
+    });
 }
 
 async function buy(
@@ -145,33 +149,35 @@ async function buy(
                 "spend",
             );
         } else if (result.reason === "too_small") {
-            await sendSimpleEmbed(interaction, {
-                title: "✖️ Amount too small",
-                description:
-                    "That amount does not buy any coin at the current price.",
-                thumType: "error",
-            });
+            await sendErrorEmbed(
+                interaction,
+                "Amount too small",
+                "That amount does not buy any coin at the current price.",
+                "Try a bigger amount.",
+            );
         } else {
             await sendSimpleEmbed(interaction, UNKNOWN_COIN);
         }
         return;
     }
     await sendSimpleEmbed(interaction, {
-        title: "🛒 Purchase completed",
-        description: `${interaction.user} bought \`${trimQuantity(result.quantity)} ${coin}\` for \`${symbol}${amount}\`.`,
-        thumType: "success",
+        author: interaction.user,
+        title: `${Emoji.buy} Purchase complete`,
+        description: `${headline(`${trimQuantity(result.quantity)} ${coin}`)}\nBought for ${money(symbol, amount)}.`,
         fields: [
             {
                 name: "Price",
-                value: `\`${symbol}${formatPrice(result.price)}\``,
+                value: price(symbol, result.price),
                 inline: true,
             },
             {
-                name: "Wallet",
-                value: `\`${symbol}${result.newWallet}\``,
+                name: `${Emoji.wallet} Wallet`,
+                value: money(symbol, result.newWallet),
                 inline: true,
             },
         ],
+        tone: "success",
+        timestamp: true,
     });
 }
 
@@ -183,13 +189,12 @@ async function sell(
     const rawQuantity =
         interaction.options.getString("quantity")?.trim() ?? null;
     if (rawQuantity !== null && !QUANTITY_PATTERN.test(rawQuantity)) {
-        await sendSimpleEmbed(interaction, {
-            title: "✖️ Invalid quantity",
-            description:
-                "Use a positive number with up to 8 decimals, like `0.5` or `12`. Leave it empty to sell everything.",
-            thumType: "error",
-            eph: true,
-        });
+        await sendErrorEmbed(
+            interaction,
+            "Invalid quantity",
+            "Use a positive number with up to 8 decimals, like `0.5` or `12`.",
+            "Leave it empty to sell everything.",
+        );
         return;
     }
     await interaction.deferReply({
@@ -207,46 +212,48 @@ async function sell(
     if (!result.ok) {
         const messages = {
             unknown_coin: UNKNOWN_COIN.description,
-            no_holdings: `You don't own any ${coin}.`,
+            no_holdings: `You don't own any ${coin}. Check \`/crypto portfolio\`.`,
             insufficient_holdings: `You only own \`${"held" in result ? trimQuantity(result.held) : "0"} ${coin}\`.`,
             too_small:
                 "That quantity is worth less than 1 at the current price.",
         };
-        await sendSimpleEmbed(interaction, {
-            title: "✖️ Sale failed",
-            description: messages[result.reason],
-            thumType: "error",
-        });
+        await sendErrorEmbed(
+            interaction,
+            "Sale failed",
+            messages[result.reason],
+        );
         return;
     }
     const fields = [
         {
             name: "Price",
-            value: `\`${symbol}${formatPrice(result.price)}\``,
+            value: price(symbol, result.price),
             inline: true,
         },
         {
             name: "Received",
-            value: `\`${symbol}${result.proceeds - result.tax}\``,
+            value: money(symbol, result.proceeds - result.tax),
             inline: true,
         },
         {
-            name: "Wallet",
-            value: `\`${symbol}${result.newWallet}\``,
+            name: `${Emoji.wallet} Wallet`,
+            value: money(symbol, result.newWallet),
             inline: true,
         },
     ];
     if (result.tax > 0)
         fields.splice(2, 0, {
-            name: "Tax",
-            value: `\`${symbol}${result.tax}\``,
+            name: `${Emoji.tax} Tax`,
+            value: money(symbol, result.tax),
             inline: true,
         });
     await sendSimpleEmbed(interaction, {
-        title: "💱 Sale completed",
-        description: `${interaction.user} sold \`${trimQuantity(result.quantity)} ${coin}\` for \`${symbol}${result.proceeds}\`.`,
-        thumType: "success",
+        author: interaction.user,
+        title: `${Emoji.sell} Sale complete`,
+        description: `${headline(`${trimQuantity(result.quantity)} ${coin}`)}\nSold for ${money(symbol, result.proceeds)}.`,
         fields,
+        tone: "success",
+        timestamp: true,
     });
 }
 
@@ -264,21 +271,27 @@ async function portfolio(
     ]);
     if (holdings.length === 0) {
         await sendSimpleEmbed(interaction, {
-            title: "💼 Portfolio",
-            description: "You don't own any coins yet. Try `/crypto buy`.",
+            author: interaction.user,
+            title: `${Emoji.portfolio} Portfolio`,
+            description: "You don't own any coins yet.",
+            hint: "Check prices with `/crypto market` and buy with `/crypto buy`.",
+            tone: "crypto",
         });
         return;
     }
     const totalValue = holdings.reduce((sum, h) => sum + h.value, 0);
     const totalCost = holdings.reduce((sum, h) => sum + h.costBasis, 0);
+    const profit = totalValue - totalCost;
     await sendSimpleEmbed(interaction, {
-        title: `💼 ${interaction.user.username}'s portfolio`,
-        description: `Value: \`${symbol}${totalValue}\` (${formatChange(percentChange(totalCost, totalValue))} vs. cost)`,
+        author: interaction.user,
+        title: `${Emoji.portfolio} Portfolio`,
+        description: `${headline(moneyText(symbol, totalValue))}\n${formatChange(percentChange(totalCost, totalValue))} · ${profit >= 0 ? "+" : "-"}${moneyText(symbol, Math.abs(profit))} vs. what you paid`,
         fields: holdings.map((h) => ({
-            name: `${h.name} (${h.symbol})`,
-            value: `\`${trimQuantity(h.quantity)}\` · \`${symbol}${h.value}\`\nCost: \`${symbol}${h.costBasis}\``,
+            name: `${h.name} · ${h.symbol}`,
+            value: `**${trimQuantity(h.quantity)}** ${h.symbol}\nWorth ${money(symbol, h.value)}\n-# Paid ${moneyText(symbol, h.costBasis)} · ${formatChange(percentChange(h.costBasis, h.value))}`,
             inline: true,
         })),
+        tone: "crypto",
     });
 }
 

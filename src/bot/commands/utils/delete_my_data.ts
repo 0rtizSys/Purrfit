@@ -28,9 +28,10 @@ export const deleteMyDataCommand: Command = {
         const confirmed = interaction.options.getBoolean("confirm", true);
         if (!confirmed) {
             await sendSimpleEmbed(interaction, {
-                title: "Nothing was deleted",
+                title: "🛡️ Nothing was deleted",
                 description:
-                    "Run the command again with `confirm: True` to permanently delete your balances and coins in every server.",
+                    "Your balances and coins are safe. To permanently delete them in **every** server, run the command again with `confirm: True`.",
+                hint: "This cannot be undone.",
                 eph: true,
             });
             return;
@@ -44,8 +45,9 @@ export const deleteMyDataCommand: Command = {
             await sendSimpleEmbed(interaction, {
                 title: "🗑️ Your data was deleted",
                 description:
-                    "Your balances and crypto holdings were removed from every server. An active `/work` cooldown stays until it expires.",
-                thumType: "success",
+                    "Your balances and crypto holdings were removed from every server.",
+                hint: "An active `/work` cooldown stays until it expires.",
+                tone: "success",
                 eph: true,
             });
         } catch (error) {

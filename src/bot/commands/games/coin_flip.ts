@@ -13,6 +13,8 @@ import {
 } from "../../Helpers/validators";
 import {
     internalErrorEmbed,
+    InsuficientsFundsEmbed,
+    sendErrorEmbed,
     sendSimpleEmbed,
 } from "../../Helpers/simplified_embed_builder";
 import { getEcoSymbol } from "../../services/database/repository/servers/get_eco_symbol";
@@ -23,19 +25,13 @@ import {
     settleCoinFlip,
 } from "../../services/games/coin_flip";
 import { logger } from "../../services/logger";
+import { Emoji, toneColor } from "../../ui/theme";
+import { headline, money, moneyChange, moneyText } from "../../ui/format";
 
 const DEFAULT_BET = 50;
 
 function formatSide(side: CoinSide): string {
     return side === "heads" ? "Heads" : "Tails";
-}
-
-function formatSignedAmount(
-    amount: number,
-    won: boolean,
-    symbol: string,
-): string {
-    return `${won ? "+" : "-"}${symbol}${amount}`;
 }
 
 export const coinFlipCommand: Command = {
@@ -77,12 +73,11 @@ export const coinFlipCommand: Command = {
         const isPublic = interaction.options.getBoolean("visibility") ?? false;
 
         if (!isCoinSide(choiceOption)) {
-            await sendSimpleEmbed(interaction, {
-                title: "✖️ Invalid coin side",
-                description: "Choose `Heads` or `Tails` to play coinflip.",
-                thumType: "error",
-                eph: true,
-            });
+            await sendErrorEmbed(
+                interaction,
+                "Invalid coin side",
+                "Choose `Heads` or `Tails` to play coinflip.",
+            );
             return;
         }
 
@@ -103,32 +98,41 @@ export const coinFlipCommand: Command = {
             );
 
             if (!wager.ok) {
-                await sendSimpleEmbed(interaction, {
-                    title: "✖️ Insufficient funds",
-                    description: `Current wallet: \`${symbol}${wager.currentBalance}\`\nBet amount: \`${symbol}${amount}\``,
-                    thumType: "error",
-                });
+                await InsuficientsFundsEmbed(
+                    interaction,
+                    wager.currentBalance,
+                    amount,
+                    symbol,
+                    "spend",
+                );
                 return;
             }
 
+            const delta = outcome.won ? outcome.amount : -outcome.amount;
             await sendSimpleEmbed(interaction, {
-                title: outcome.won ? "Coinflip won 🪙" : "Coinflip lost 🪙",
-                description: `${interaction.user} chose \`${formatSide(outcome.choice)}\` and the coin landed on \`${formatSide(outcome.result)}\`.`,
-                thumType: outcome.won ? "success" : "error",
+                author: interaction.user,
+                title: outcome.won
+                    ? `${Emoji.coin} You won!`
+                    : `${Emoji.coin} You lost`,
+                description: `You picked **${formatSide(outcome.choice)}** · the coin landed on **${formatSide(outcome.result)}**\n${headline(`${delta >= 0 ? "+" : "-"}${moneyText(symbol, Math.abs(delta))}`)}`,
+                tone: "success",
+                //? A lost bet is a normal result, not an error: only the color
+                //? changes, so it stays public and keeps the footer
+                color: outcome.won ? undefined : toneColor("error"),
                 fields: [
                     {
                         name: "Bet",
-                        value: `\`${symbol}${outcome.amount}\``,
+                        value: money(symbol, outcome.amount),
                         inline: true,
                     },
                     {
-                        name: "Result",
-                        value: `\`${formatSignedAmount(outcome.amount, outcome.won, symbol)}\``,
+                        name: `${Emoji.wallet} Wallet`,
+                        value: moneyChange(
+                            symbol,
+                            wager.previousBalance,
+                            wager.newBalance,
+                        ),
                         inline: true,
-                    },
-                    {
-                        name: "Wallet",
-                        value: `\`${symbol}${wager.previousBalance}\` → \`${symbol}${wager.newBalance}\``,
                     },
                 ],
             });

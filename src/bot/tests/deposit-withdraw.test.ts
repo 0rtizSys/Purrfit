@@ -5,6 +5,7 @@ import { requireGuild } from "../Helpers/require_guild";
 import { isInvalidAmount } from "../Helpers/validators";
 import { getEcoSymbol } from "../services/database/repository/servers/get_eco_symbol";
 import { transferInternalSafe } from "../services/database/repository/clients/withdraw-transfer";
+import { Emoji } from "../ui/theme";
 import {
     InsuficientsFundsEmbed,
     sendSimpleEmbed,
@@ -90,7 +91,7 @@ describe("depositCommand", () => {
         expect(sendSimpleEmbedMock).toHaveBeenCalledWith(
             interaction,
             expect.objectContaining({
-                title: "Deposit completed ✅ ",
+                title: `${Emoji.bank} Deposit complete`,
             }),
         );
     });
@@ -145,7 +146,7 @@ describe("withdrawCommand", () => {
         expect(sendSimpleEmbedMock).toHaveBeenCalledWith(
             interaction,
             expect.objectContaining({
-                title: "Withdrawal completed ✅ ",
+                title: `${Emoji.wallet} Withdrawal complete`,
             }),
         );
     });

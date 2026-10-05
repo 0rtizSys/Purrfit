@@ -9,6 +9,7 @@ import { requireGuild } from "../../../Helpers/require_guild";
 import {
     internalErrorEmbed,
     notEnoughPermsEmbed,
+    sendErrorEmbed,
     sendSimpleEmbed,
 } from "../../../Helpers/simplified_embed_builder";
 import {
@@ -21,6 +22,7 @@ import {
     percentToBps,
 } from "../../../services/economy/policy";
 import { logger } from "../../../services/logger";
+import { Emoji } from "../../../ui/theme";
 
 export const setTaxRateAdmin: Command = {
     data: new SlashCommandBuilder()
@@ -52,12 +54,11 @@ export const setTaxRateAdmin: Command = {
         const percent = interaction.options.getNumber("percent", true);
         const bps = percentToBps(percent);
         if (!Number.isFinite(percent) || bps < 0 || bps > MAX_TAX_BPS) {
-            await sendSimpleEmbed(interaction, {
-                title: "✖️ Error",
-                description: "The rate must be between `0` and `50` percent.",
-                thumType: "error",
-                eph: true,
-            });
+            await sendErrorEmbed(
+                interaction,
+                "Invalid rate",
+                "The rate must be between `0%` and `50%`.",
+            );
             return;
         }
         const guildId = interaction.guild!.id;
@@ -65,9 +66,11 @@ export const setTaxRateAdmin: Command = {
             const before = await getEconomySettings(guildId);
             await setTaxRate(guildId, bps);
             await sendSimpleEmbed(interaction, {
-                title: "⚙️ Configuration saved",
-                description: `Old tax rate: \`${formatBps(before.taxBps)}\`\nNew tax rate: \`${formatBps(bps)}\``,
-                thumType: "success",
+                title: `${Emoji.settings} Tax rate updated`,
+                description: `\`${formatBps(before.taxBps)}\` → \`${formatBps(bps)}\``,
+                author: interaction.user,
+                tone: "admin",
+                timestamp: true,
             });
         } catch (error) {
             logger.error("Error en comando set_tax_rate", { error });

@@ -1,6 +1,5 @@
 import {
     SlashCommandBuilder,
-    SlashCommandOptionsOnlyBuilder,
     ChatInputCommandInteraction,
     MessageFlags,
 } from "discord.js";
@@ -20,6 +19,8 @@ import {
     internalErrorEmbed,
 } from "../../../Helpers/simplified_embed_builder";
 import { logger } from "../../../services/logger";
+import { Emoji } from "../../../ui/theme";
+import { headline, moneyText, relativeTime } from "../../../ui/format";
 
 const TEMP_MIN: number = 100;
 const TEMP_MAX: number = 1000;
@@ -28,10 +29,19 @@ function randomValues(Na: number, Nb: number) {
     return randomInt(Na, Nb + 1);
 }
 
-export type Command = {
-    data: SlashCommandBuilder | SlashCommandOptionsOnlyBuilder;
-    execute: (interaction: ChatInputCommandInteraction) => Promise<void>;
-};
+//? Flavor text for a finished shift; purely cosmetic
+const SHIFTS = [
+    "You brushed a very fluffy Persian",
+    "You delivered tuna across town",
+    "You tested cardboard boxes for comfort",
+    "You chased the red dot for a laser startup",
+    "You guarded the warehouse from mice",
+    "You modeled for a cat food commercial",
+    "You knocked things off desks for science",
+    "You napped professionally in a sunbeam",
+];
+
+import { Command } from "../../types";
 
 export const workCommand: Command = {
     data: new SlashCommandBuilder()
@@ -67,16 +77,27 @@ export const workCommand: Command = {
             );
             if (!result.ok) {
                 await sendSimpleEmbed(interaction, {
-                    title: "On Cooldown 🧊",
-                    description: `Wait \`${Math.ceil(result.remaining / 1000)}\` seconds to work again 🕐!`,
-                    thumType: "error",
+                    title: `${Emoji.cooldown} Taking a break`,
+                    description: `You are still tired from your last shift.\nYou can work again ${relativeTime(Date.now() + result.remaining)}.`,
+                    tone: "cooldown",
+                    eph: true,
                 });
                 return;
             }
+            const shift = SHIFTS[randomInt(SHIFTS.length)];
             await sendSimpleEmbed(interaction, {
-                title: "💼 Work",
-                description: `${interaction.user} earned \`${symbol}${ranGains}\` 💵`,
-                eph: !isPublic,
+                author: interaction.user,
+                title: `${Emoji.work} Shift complete`,
+                description: `${shift} and earned\n${headline(`+${moneyText(symbol, ranGains)}`)}`,
+                fields: [
+                    {
+                        name: "Next shift",
+                        value: relativeTime(Date.now() + cdTime * 1000),
+                        inline: true,
+                    },
+                ],
+                hint: "Bank money earns daily interest. Move it with `/deposit`.",
+                tone: "success",
             });
         } catch (e) {
             logger.error("Error en comando work", { error: e });

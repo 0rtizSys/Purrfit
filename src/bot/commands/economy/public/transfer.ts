@@ -27,15 +27,17 @@ import { getEcoSymbol } from "../../../services/database/repository/servers/get_
 
 import { sendSimpleEmbed } from "../../../Helpers/simplified_embed_builder";
 import { logger } from "../../../services/logger";
+import { Emoji } from "../../../ui/theme";
+import { headline, money, moneyText } from "../../../ui/format";
 
 export const transferCommand: Command = {
     data: new SlashCommandBuilder()
         .setName("transfer")
-        .setDescription("Transfer bank balance to a user")
+        .setDescription("Send money from your bank to another member")
         .addUserOption((opt) =>
             opt
                 .setName("user")
-                .setDescription("User to transfer")
+                .setDescription("Member who receives the money")
                 .setRequired(true),
         )
         .addIntegerOption((opt) =>
@@ -60,14 +62,16 @@ export const transferCommand: Command = {
         const targetId = target.id;
         const amount = interaction.options.getInteger("amount", true);
         const isPublic = interaction.options.getBoolean("visibility") ?? false;
+        //? Input checks need no DB, so they run before the defer and their
+        //? errors are always private
+        if (await isSelfTransfer(interaction, userId, targetId)) return;
+        if (await isBotAction(interaction, target)) return;
+        if (await isInvalidAmount(interaction, amount)) return;
         await interaction.deferReply({
             flags: !isPublic ? MessageFlags.Ephemeral : undefined,
         });
         try {
             const symbol = await getEcoSymbol(guildId);
-            if (await isSelfTransfer(interaction, userId, targetId)) return;
-            if (await isBotAction(interaction, target)) return;
-            if (await isInvalidAmount(interaction, amount)) return;
             //? The balance check happens inside the transaction, under a row lock
             const result = await transferSafe(
                 userId,
@@ -85,26 +89,31 @@ export const transferCommand: Command = {
                 );
                 return;
             }
+            const fields = [
+                { name: "From", value: `${interaction.user}`, inline: true },
+                { name: "To", value: `${target}`, inline: true },
+            ];
+            if (result.tax > 0) {
+                fields.push(
+                    {
+                        name: `${Emoji.tax} Tax`,
+                        value: money(symbol, result.tax),
+                        inline: true,
+                    },
+                    {
+                        name: "Received",
+                        value: money(symbol, result.received),
+                        inline: true,
+                    },
+                );
+            }
             await sendSimpleEmbed(interaction, {
-                title: "Transaction completed 💳",
-                description: isPublic
-                    ? `${interaction.user} successfully transferred \`${symbol}${amount}\` to <@${targetId}>`
-                    : `Successfully transferred \`${symbol}${amount}\` to <@${targetId}>`,
-                fields:
-                    result.tax > 0
-                        ? [
-                              {
-                                  name: "Received",
-                                  value: `\`${symbol}${result.received}\``,
-                                  inline: true,
-                              },
-                              {
-                                  name: "Tax",
-                                  value: `\`${symbol}${result.tax}\``,
-                                  inline: true,
-                              },
-                          ]
-                        : undefined,
+                author: interaction.user,
+                title: `${Emoji.transfer} Transfer complete`,
+                description: headline(moneyText(symbol, amount)),
+                fields,
+                tone: "success",
+                timestamp: true,
             });
         } catch (err) {
             logger.error("Error en comando transfer", { error: err });
