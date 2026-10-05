@@ -1,5 +1,40 @@
 # Changelog
 
+## [2.0.0] - 2026-10-05
+Public release preparation: global commands, Docker, migrations, advanced economy.
+
+### ✨ Added
+- Simulated crypto market: `/crypto market`, `/crypto chart` (PNG chart rendered with `@napi-rs/canvas`, ranges 1h/24h/7d/30d), `/crypto buy`, `/crypto sell`, `/crypto portfolio`. Five coins (PURR, MEOW, WSK, NIP, TUNA) seeded in `migrations/002_advanced_economy.sql`. Prices follow a mean-reverting log random walk (`services/economy/market_sim.ts`), tick every 5 minutes, are bounded to 2%–5000% of the base price and keep 35 days of history; a fresh install backfills 7 days so charts are never empty.
+- Daily bank interest (`runBankInterest`, default 10 bps, max 500 bps, capped at 10,000 per account per day) paid once per UTC day.
+- Server taxes (`tax_bps`, 0–5000) on `/transfer` (taken from the received amount) and crypto sales; collected tax goes to `server_configurations.treasury`.
+- `/set_tax_rate`, `/set_interest_rate` (Administrator), `/economy_info`, `/leaderboard` (total/wallet/bank + caller rank), `/help` (built from the registry, with `SUPPORT_URL`/`PRIVACY_URL`/`TERMS_URL` links), `/delete_my_data` (deletes balances and holdings in every server; active `/work` cooldowns are kept so it cannot be used to skip them).
+- SQL migrations in `migrations/` with runner `src/scripts/migrate.ts` (`schema_migrations` table, `pg_advisory_lock`, one transaction per file); `npm start` migrates before starting.
+- `src/scripts/deploy_commands.ts` / `npm run deploy-commands` and `services/discord/deploy_commands.ts`.
+- `Dockerfile` (multi-stage, `node:22-bookworm-slim`, non-root, fonts for charts), `.dockerignore`, `docker-compose.yml` (bot + Postgres 16, slot reserved for the future website).
+- `services/logger.ts`: timestamped levelled logs (`LOG_LEVEL`) and error alerts to `ERROR_WEBHOOK_URL` (throttled, no mentions).
+- `services/rate_limit.ts`: per-user token bucket (6 burst, 1 every 2 s) and per-command cooldowns (`coinflip`/`transfer` 3 s, `crypto` 2 s, `leaderboard` 5 s, `delete_my_data` 10 s), applied in the router.
+- `services/jobs/scheduler.ts`: runs the price tick and interest jobs; each run is claimed in `scheduled_jobs` under a row lock so multiple instances never double-run. `DISABLE_JOBS=true` turns them off for an instance.
+- `docs/PRIVACY.md` and `docs/TERMS.md`.
+- GitHub Actions CI (`.github/workflows/ci.yml`): typecheck, lint, prettier, unit + Postgres integration tests, build, Docker build.
+- `DATABASE_SSL=disable` for local databases; new variables documented in `.env.example`.
+
+### ♻ changes
+- Public commands are registered **globally**; developer commands (`sync_slash_guild`) only in `GUILD_ID`. The old `sync_slash.ts` script that deleted all global commands was removed.
+- `syncer.ts` exports `commandCategories`, `publicCmds`, `devCmds` and `cmds`.
+- `transferSafe` returns `{ ok: true, received, tax }`.
+- `index.ts`: graceful shutdown on `SIGTERM`/`SIGINT` (stops jobs, `client.destroy()`, `pool.end()`, 10 s hard limit), `GuildCreate`/`GuildDelete` logging, exits with an error when `TOKEN` is missing or login fails, presence changed to "Watching the crypto markets", dropped the unused `GuildMessages` intent.
+- All command and database errors go through `logger` instead of `console`.
+- `dotenv.config({ quiet: true })` everywhere.
+- `InsuficientsFundsEmbed` accepts `"spend"`.
+- `package.json`: version `2.0.0`, scripts `build`, `start`, `migrate`, `deploy-commands`, `lint`, `typecheck`, `test:integration`; `tsconfig.build.json` excludes tests from `dist`; Jest maps `.js` import suffixes.
+
+### 🔒 Security
+- Removed unused `express`, `cors`, `ts-node-dev` (and their types); ran `npm audit fix`. `npm audit` reports 0 vulnerabilities.
+
+### 🧪 Tests
+- `tests/integration/economy.int.test.ts` (runs when `TEST_DATABASE_URL` is set): idempotent migrations, buy/sell with tax and treasury, insufficient funds/oversell, 8 parallel buys and 6 parallel sells cannot overdraw, transfer tax, interest once per day with cap, market tick claim and backfill, leaderboard rank, data deletion keeping active cooldowns.
+- `rate-limit.test.ts`, `economy-policy.test.ts` (tax, bps, price simulation bounds, chart PNG), `command-registry.test.ts` (unique names, dev commands never global, valid payloads), transfer tax case in `money-repository.test.ts`.
+
 ## [1.11.0] - 2026-10-05
 - Added `DATABASE_CA_CERT` and `DB_POOL_MAX` to `.env.example`
 

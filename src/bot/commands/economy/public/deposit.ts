@@ -23,6 +23,7 @@ import {
 } from "../../../Helpers/simplified_embed_builder";
 
 import { transferInternalSafe } from "../../../services/database/repository/clients/withdraw-transfer";
+import { logger } from "../../../services/logger";
 
 export const depositCommand: Command = {
     data: new SlashCommandBuilder()
@@ -82,7 +83,7 @@ export const depositCommand: Command = {
                     : `${interaction.user} You have successfully deposit \`${ecoSymbol} ${amount}\` from your wallet`,
             });
         } catch (e) {
-            console.log(e);
+            logger.error("Error en comando deposit", { error: e });
             await internalErrorEmbed(interaction);
         }
     },

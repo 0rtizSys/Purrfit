@@ -1,15 +1,22 @@
 {
   "name": "purrfit",
-  "version": "1.0.0",
-  "description": "",
+  "version": "2.0.0",
+  "description": "Purrfit, a Discord economy bot",
   "license": "ISC",
   "author": "me",
-  "main": "index.js",
+  "main": "dist/bot/index.js",
   "scripts": {
     "dev": "tsc --watch",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/scripts/migrate.js && node dist/bot/index.js",
     "compile": "npx tsc && node dist/bot/index.js",
+    "init": "node dist/bot/index.js",
+    "migrate": "node dist/scripts/migrate.js",
+    "deploy-commands": "node dist/scripts/deploy_commands.js",
     "test": "jest",
-    "init": "node dist/bot/index.js"
+    "test:integration": "jest src/bot/tests/integration",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit"
   },
   "jest": {
     "preset": "ts-jest",
@@ -17,11 +24,12 @@
     "testPathIgnorePatterns": [
       "/node_modules/",
       "/dist/"
-    ]
+    ],
+    "moduleNameMapper": {
+      "^(\\.{1,2}/.*)\\.js$": "$1"
+    }
   },
   "devDependencies": {
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
     "@types/jest": "^30.0.0",
     "@types/node": "^25.6.0",
     "@types/pg": "^8.20.0",
@@ -36,12 +44,13 @@
     "typescript-eslint": "^8.58.2"
   },
   "dependencies": {
-    "cors": "^2.8.6",
+    "@napi-rs/canvas": "^1.0.10",
     "discord.js": "^14.26.3",
     "dotenv": "^17.4.2",
-    "express": "^5.2.1",
     "pg": "^8.20.0",
-    "ts-node-dev": "^2.0.0",
     "zod": "^4.3.6"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

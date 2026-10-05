@@ -26,6 +26,7 @@ import { transferSafe } from "../../../services/database/repository/clients/tran
 import { getEcoSymbol } from "../../../services/database/repository/servers/get_eco_symbol";
 
 import { sendSimpleEmbed } from "../../../Helpers/simplified_embed_builder";
+import { logger } from "../../../services/logger";
 
 export const transferCommand: Command = {
     data: new SlashCommandBuilder()
@@ -89,9 +90,24 @@ export const transferCommand: Command = {
                 description: isPublic
                     ? `${interaction.user} successfully transferred \`${symbol}${amount}\` to <@${targetId}>`
                     : `Successfully transferred \`${symbol}${amount}\` to <@${targetId}>`,
+                fields:
+                    result.tax > 0
+                        ? [
+                              {
+                                  name: "Received",
+                                  value: `\`${symbol}${result.received}\``,
+                                  inline: true,
+                              },
+                              {
+                                  name: "Tax",
+                                  value: `\`${symbol}${result.tax}\``,
+                                  inline: true,
+                              },
+                          ]
+                        : undefined,
             });
         } catch (err) {
-            console.log(err);
+            logger.error("Error en comando transfer", { error: err });
             await internalErrorEmbed(interaction);
         }
     },

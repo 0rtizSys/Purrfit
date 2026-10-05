@@ -1,0 +1,51 @@
+# Local / self-hosted setup: Purrfit + its own PostgreSQL.
+#   docker compose up -d --build
+#   docker compose run --rm bot node dist/scripts/deploy_commands.js   # publish slash commands
+#
+# Using Supabase (or another hosted Postgres) instead? Delete the `db` service,
+# the `depends_on` block and the two DATABASE_* lines under `bot.environment`,
+# and put DATABASE_URL in .env.
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: purrfit
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-purrfit}
+      POSTGRES_DB: purrfit
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U purrfit -d purrfit"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  bot:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://purrfit:${POSTGRES_PASSWORD:-purrfit}@db:5432/purrfit
+      DATABASE_SSL: disable
+    depends_on:
+      db:
+        condition: service_healthy
+    stop_grace_period: 15s
+
+  # The website will go here as its own service, sharing the same database, e.g.:
+  # web:
+  #   build: ./web
+  #   restart: unless-stopped
+  #   env_file: .env
+  #   environment:
+  #     DATABASE_URL: postgres://purrfit:${POSTGRES_PASSWORD:-purrfit}@db:5432/purrfit
+  #   ports:
+  #     - "3000:3000"
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+
+volumes:
+  pgdata:

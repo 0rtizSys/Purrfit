@@ -1,260 +1,153 @@
 # Purrfit
 
-Purrfit is a Discord economy bot built with TypeScript, `discord.js`, and PostgreSQL.
-It is designed around a simple server-based economy: users can work for money, check their wallet, and administrators can manage balances and server economy settings.
+Purrfit is a Discord economy bot built with TypeScript, `discord.js` v14 and PostgreSQL.
+Every server gets its own economy: members work for money, save it in the bank (which pays daily interest), send it to each other, gamble it on a coinflip and trade simulated cryptocurrencies with live price charts. Admins set the rules: currency symbol, work cooldown, taxes and interest.
 
-## Current Features
-
-- Slash-command based interaction flow.
-- Per-server economy data.
-- Persistent wallet and bank balances stored in PostgreSQL.
-- Per-user cooldown system for the `/work` command.
-- Server configuration for:
-  - economy symbol
-  - work cooldown time
-- Transactional server cooldown updates that shorten active `/work` cooldowns only when they exceed the new configured time.
-- Shared embed helpers for consistent bot responses.
-- Internal slash command sync command for development and deployment (guild-only).
+All money and coins are fictional. See the [Terms of Service](./docs/TERMS.md) and [Privacy Policy](./docs/PRIVACY.md).
 
 ## Commands
 
-### Public Commands
+### 💰 Economy
 
-- `/ping`
-  - Shows bot latency and API latency.
+| Command | What it does |
+|---|---|
+| `/work` | Earn a random reward (100 to 1000). Per-user cooldown set by the server. |
+| `/wallet_balance` | See your wallet. |
+| `/bank_balance` | See your bank balance. |
+| `/deposit` `amount` | Move money from wallet to bank. |
+| `/withdraw` `amount` | Move money from bank to wallet. |
+| `/transfer` `user` `amount` | Send bank money to another member. The server tax is taken from what they receive. |
+| `/leaderboard` `[by]` | Top 10 richest members by total, wallet or bank, plus your rank. |
+| `/economy_info` | Server symbol, cooldown, tax rate, interest rate and treasury. |
 
-- `/work`
-  - Grants a random wallet reward between `100` and `1000`.
-  - Uses a per-user cooldown stored in the database.
-  - Optional `visibility` boolean controls whether the response is public or ephemeral.
+### 📈 Crypto (simulated)
 
-- `/wallet_balance`
-  - Shows the user's current wallet balance.
+| Command | What it does |
+|---|---|
+| `/crypto market` | Current prices and 24h change of every coin. |
+| `/crypto chart` `coin` `[range]` | Price chart image for 1h, 24h, 7d or 30d. |
+| `/crypto buy` `coin` `amount` | Spend wallet money on a coin. |
+| `/crypto sell` `coin` `[quantity]` | Sell some or all of a coin; the server tax applies to the proceeds. |
+| `/crypto portfolio` | Your coins, their value and what you paid. |
 
-- `/bank_balance`
-  - Shows the user's current bank balance.
+Coins: Purrcoin (PURR), Meowthereum (MEOW), Whisker Token (WSK), Catnip (NIP) and Tuna Stable (TUNA). Prices move every 5 minutes with a mean-reverting random walk, are the same in every server, and holdings are per server.
 
-- `/withdraw`
-  - Withdraws an amount from `bank` into `wallet`.
-  - Options:
-    - `amount`
-    - `visibility` (optional)
+### 🎲 Games
 
-- `/deposit`
-  - Deposits an amount from `wallet` into `bank`.
-  - Options:
-    - `amount`
-    - `visibility` (optional)
+| Command | What it does |
+|---|---|
+| `/coinflip` `choice` `[amount]` | Bet wallet money on heads or tails. |
 
-- `/transfer`
-  - Transfers `bank` balance to another user (ACID transaction).
-  - Options:
-    - `user`
-    - `amount`
-    - `visibility` (optional)
+### 🛠️ Admin (requires Administrator)
 
-### Moderator / Admin Commands
+| Command | What it does |
+|---|---|
+| `/add_balance` | Add money to a member's wallet or bank. |
+| `/set_cooldown_time` | `/work` cooldown in seconds. Active cooldowns longer than the new value are shortened. |
+| `/set_economy_symbol` | Currency symbol (1 or 2 characters). |
+| `/set_tax_rate` | Tax on transfers and crypto sales, 0 to 50%. Collected tax goes to the server treasury. |
+| `/set_interest_rate` | Daily bank interest, 0 to 5% (default 0.1%). Each account earns at most 10,000 per day. |
 
-- `/add_balance`
-  - Adds money to either a user's `wallet` or `bank`.
-  - Options:
-    - `method`: `wallet` or `bank`
-    - `amount`
-    - `user`
-    - `visibility`
-  - Requires Administrator permission.
+### ℹ️ Utility
 
-- `/set_cooldown_time`
-  - Changes the cooldown time used by `/work`.
-  - Value is set in positive integer seconds.
-  - Existing active cooldowns longer than the new value are shortened for that server.
-  - Requires Administrator permission.
+| Command | What it does |
+|---|---|
+| `/help` | Lists every command and the support, privacy and terms links. |
+| `/ping` | Bot and API latency. |
+| `/delete_my_data` `confirm` | Deletes your balances and coins in every server. |
 
-- `/set_economy_symbol`
-  - Changes the economy symbol used in that server.
-  - Symbol length is limited to 1 or 2 characters.
-  - Requires Administrator permission.
+### Developer
 
-### Developer Command
+`/sync_slash_guild` is only registered in `GUILD_ID` and only works for `OWNER_ID`. It publishes the commands (same as `npm run deploy-commands`).
 
-- `/sync_slash_guild`
-  - Syncs slash commands to the configured guild (and clears duplicates there).
-  - Restricted to `OWNER_ID`.
-  - Uses:
-    - `CLIENT_ID`
-    - `GUILD_ID`
-    - `TOKEN`
+## Running it
 
-## Environment Variables
+### With Docker (recommended)
 
-The project expects these environment variables in `.env`:
-
-```env
-TOKEN=
-OWNER_ID=
-CLIENT_ID=
-GUILD_ID=
-
-DB_HOST=
-DB_PORT=
-DB_USER=
-DB_PASSWORD=
-DB_NAME=
+```bash
+cp .env.example .env       # fill in TOKEN, CLIENT_ID, OWNER_ID, GUILD_ID
+docker compose up -d --build
+docker compose run --rm bot node dist/scripts/deploy_commands.js
 ```
 
-## Database Expectations
+`docker-compose.yml` starts the bot with its own PostgreSQL. To use Supabase or another hosted database instead, follow the comment at the top of that file. The container applies pending database migrations every time it starts, and shuts down cleanly on `docker compose down` or a redeploy.
 
-The bot connects to PostgreSQL through `pg` and expects the following tables to already exist.
-See `DATABASE_SCHEMA.md` to gather information about the tables the program expects
+The image runs on any Docker host (a VPS, Render, Railway, Fly.io...). The bot only needs outbound internet; it does not open any port.
 
-### `clients`
+### Without Docker
 
-Used to store user balances per guild.
+Requires Node.js 20+ and PostgreSQL 14+.
 
-Expected columns:
+```bash
+npm ci
+cp .env.example .env       # fill it in, including DATABASE_URL
+npm run build
+npm run deploy-commands    # publish slash commands (once, and after adding or changing commands)
+npm start                  # applies migrations, then starts the bot
+```
 
-- `user_id`
-- `guild_id`
-- `wallet`
-- `bank`
+### Publishing commands
 
-Expected constraint:
+`npm run deploy-commands` registers the public commands **globally**, so they work in every server that adds Purrfit, and registers developer commands only in `GUILD_ID`. Run it again whenever you add or change a command.
 
-- unique or primary key on `(user_id, guild_id)`
+## Configuration
 
-### `cooldowns_table`
+See [`.env.example`](./.env.example). Required: `TOKEN`, `CLIENT_ID`, `OWNER_ID`, `DATABASE_URL` (and `GUILD_ID` for the developer command).
 
-Used to store work cooldown expiration timestamps.
+Optional:
 
-Expected columns:
+- `DATABASE_CA_CERT`: verifies the database SSL certificate (recommended for Supabase).
+- `ERROR_WEBHOOK_URL`: a Discord webhook that receives error alerts (throttled to one every 10 seconds).
+- `LOG_LEVEL`: `debug`, `info`, `warn` or `error`.
+- `SUPPORT_URL`, `PRIVACY_URL`, `TERMS_URL`: links shown in `/help`.
+- `DISABLE_JOBS=true`: stops an instance from running background jobs.
 
-- `guild_id`
-- `user_id`
-- `cooldown`
+## Database
 
-Expected constraint:
+The schema lives in [`migrations/`](./migrations) and is applied automatically by `npm start` (or `npm run migrate`). Applied files are tracked in `schema_migrations`, and an advisory lock prevents two instances from migrating at once. To change the schema, add a new numbered file such as `003_something.sql`; never edit one that already ran.
 
-- unique or primary key on `(guild_id, user_id)`
+Background jobs (crypto price ticks every 5 minutes, bank interest once per UTC day) claim each run in the `scheduled_jobs` table, so running two instances at once never ticks or pays twice.
 
-### `server_configurations`
+See [DATABASE_SCHEMA.md](./DATABASE_SCHEMA.md) for the tables.
 
-Used to store per-server economy settings.
+## Safety
 
-Expected columns:
+- Every balance change runs in a transaction with row locks, so parallel commands cannot double-spend (covered by integration tests).
+- Users are rate-limited (a shared token bucket plus per-command cooldowns, e.g. 3 s for `/coinflip`).
+- Admin commands are hidden from non-admins and checked again at runtime.
 
-- `guild_id`
-- `cooldown_time`
-- `economy_symbol`
+## Development
 
-Expected constraint:
+```bash
+npm run typecheck
+npm run lint
+npm test                                   # unit tests
+TEST_DATABASE_URL=postgres://... npm test  # also runs the Postgres integration tests (wipes the tables!)
+```
 
-- unique or primary key on `guild_id`
+GitHub Actions runs type checking, lint, formatting, all tests against a Postgres service, and a Docker build on every push and pull request.
 
-## Quick Start
-
-1. Install dependencies:
-   - `npm install`
-2. Create and fill `.env` (see variables above).
-3. Create the database tables (see `DATABASE_SCHEMA.md`).
-4. Build & run:
-   - `npm run compile`
-
-## Project Structure
+## Project structure
 
 ```text
+migrations/               SQL migrations
 src/
+  scripts/                migrate.ts, deploy_commands.ts
   bot/
-    commands/
-      dev/
-      economy/
-        admin/
-        moderators/
-        public/
-      utils/
-    configs/
-    Helpers/
+    index.ts              Discord client, interaction router, rate limit, shutdown
+    syncer.ts             command registry (public and developer commands)
+    commands/             slash commands
+    Helpers/              embeds, validators
     services/
-      database/
-        repository/
-          servers/
-            set_cd_time.ts
-            scdt.test.ts
-        tables/
-    index.ts
-    syncer.ts
+      database/           pool, transactions, repositories (clients, crypto, servers, jobs)
+      economy/            pure rules: taxes, interest, price simulation
+      charts/             price chart rendering
+      jobs/               background scheduler
+      logger.ts, rate_limit.ts
+    tests/                unit tests and tests/integration (Postgres)
+docs/                     Privacy Policy and Terms of Service
 ```
-
-### Structure Notes
-
-- `index.ts` boots the Discord client and routes interactions.
-- `syncer.ts` works as the command registry.
-- `commands/` contains slash command definitions and interaction handlers.
-- `services/database/` contains PostgreSQL access logic.
-- `Helpers/` contains reusable interaction utilities.
-- `configs/` contains embed-related configuration.
-
-## How It Works
-
-- The bot loads environment variables with `dotenv`.
-- It initializes a Discord client in `src/bot/index.ts`.
-- Every slash command is registered in `src/bot/syncer.ts`.
-- On interaction:
-  - the bot looks up the command by name
-  - executes the matching handler
-  - falls back to a generic error response if execution fails
-
-Economy behavior is scoped by guild:
-
-- balances are stored per user and per guild
-- cooldowns are stored per user and per guild
-- economy symbol and cooldown time are stored per guild
-- cooldown time changes run in a database transaction and roll back on failure
-
-## Scripts
-
-Current `package.json` scripts:
-
-```json
-{
-  "dev": "tsc --watch",
-  "compile": "npx tsc && node dist/bot/index.js"
-}
-```
-
-Notes:
-
-- `dev` watches TypeScript compilation only (it does not run the bot).
-- `compile` builds TypeScript and runs the compiled entrypoint.
-
-## Tech Stack
-
-- TypeScript
-- Node.js
-- discord.js v14
-- PostgreSQL
-- dotenv
-- Jest
-- Prettier
-- zod
-
-## Current Limitations
-
-- No migration or schema bootstrap files are included.
-- Automated test coverage is still incremental.
-- Some command validations and permission checks could still be tightened in code.
 
 ## Changelog
 
-Recent documented additions include:
-
-- configurable economy symbol
-- configurable work cooldown
-- embed and cooldown fixes
-- command and naming refactors
-
-See [CHANGELOG.md](./CHANGELOG.md) for the full history.
-
-## Summary
-
-Purrfit is already a functional foundation for a Discord economy bot with per-server configuration and persistent balances.
-It is still an early-stage project, but the current codebase already supports a practical economy loop, admin controls, and a database-backed command system that can be extended further.
+See [CHANGELOG.md](./CHANGELOG.md).

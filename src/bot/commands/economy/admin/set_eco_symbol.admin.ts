@@ -16,6 +16,7 @@ import {
 } from "../../../Helpers/simplified_embed_builder";
 
 import { setEcoSymbol } from "../../../services/database/repository/servers/set_eco_symbol";
+import { logger } from "../../../services/logger";
 
 export interface Command {
     data: SlashCommandBuilder | SlashCommandOptionsOnlyBuilder;
@@ -78,7 +79,7 @@ export const setEconomySymbolAdmin: Command = {
                 eph: false,
             });
         } catch (e) {
-            console.log(e);
+            logger.error("Error en comando set_economy_symbol", { error: e });
             await internalErrorEmbed(interaction);
         }
     },

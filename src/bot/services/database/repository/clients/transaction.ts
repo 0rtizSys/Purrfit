@@ -1,7 +1,9 @@
 import { withTransaction } from "../../transaction";
+import { computeTax } from "../../../economy/policy";
+import { addToTreasury, readTaxBps } from "../servers/treasury";
 
 export type TransferResult =
-    | { ok: true }
+    | { ok: true; received: number; tax: number }
     | { ok: false; reason: "insufficient_funds"; currentBalance: number };
 
 /**
@@ -10,6 +12,9 @@ export type TransferResult =
  * Both rows are created if missing and then locked in a fixed order
  * (by user_id), so A->B and B->A running at the same time queue up
  * instead of deadlocking.
+ *
+ * The server tax is taken from what the receiver gets (the sender pays
+ * exactly `amount`) and goes to the server treasury.
  */
 export async function transferSafe(
     userId: string,
@@ -48,13 +53,17 @@ export async function transferSafe(
             };
         }
 
+        const tax = computeTax(amount, await readTaxBps(client, guildId));
+        const received = amount - tax;
+
         await client.query(
             `UPDATE clients
-             SET bank = bank + CASE WHEN user_id = $1 THEN -$3::bigint ELSE $3::bigint END
+             SET bank = bank + CASE WHEN user_id = $1 THEN -$3::bigint ELSE $5::bigint END
              WHERE guild_id = $4 AND user_id IN ($1, $2)`,
-            [userId, targetId, amount, guildId],
+            [userId, targetId, amount, guildId, received],
         );
+        await addToTreasury(client, guildId, tax);
 
-        return { ok: true };
+        return { ok: true, received, tax };
     });
 }
