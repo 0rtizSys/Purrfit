@@ -1,6 +1,6 @@
-# Aurum
+# Purrfit
 
-Aurum is a Discord economy bot built with TypeScript, `discord.js`, and PostgreSQL.
+Purrfit is a Discord economy bot built with TypeScript, `discord.js`, and PostgreSQL.
 It is designed around a simple server-based economy: users can work for money, check their wallet, and administrators can manage balances and server economy settings.
 
 ## Current Features
@@ -256,5 +256,5 @@ See [CHANGELOG.md](./CHANGELOG.md) for the full history.
 
 ## Summary
 
-Aurum is already a functional foundation for a Discord economy bot with per-server configuration and persistent balances.
+Purrfit is already a functional foundation for a Discord economy bot with per-server configuration and persistent balances.
 It is still an early-stage project, but the current codebase already supports a practical economy loop, admin controls, and a database-backed command system that can be extended further.

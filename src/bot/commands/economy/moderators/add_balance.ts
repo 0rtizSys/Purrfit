@@ -87,7 +87,7 @@ export const addBalanceCommand: Command = {
         if (userTarget.bot) {
             await sendSimpleEmbed(interaction, {
                 title: "✖️You dont have enough perms to do that! 😥 Error",
-                description: "Aurum: Why would you add balance to Bots?! 😥",
+                description: "Purrfit: Why would you add balance to Bots?! 😥",
                 thumType: "error",
             });
             return;

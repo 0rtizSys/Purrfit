@@ -76,7 +76,7 @@ export async function notEnoughPermsEmbed(
     const embed = new EmbedBuilder()
         .setColor(embColor)
         .setTitle("✖️ Error")
-        .setDescription("Aurum: You dont have enough perms to do that!")
+        .setDescription("Purrfit: You dont have enough perms to do that!")
         .setThumbnail(errorIcon);
 
     if (interaction.deferred || interaction.replied) {
@@ -174,7 +174,7 @@ export async function SameUserEmbed(interaction: ChatInputCommandInteraction) {
     const embed = new EmbedBuilder()
         .setColor(embColor)
         .setTitle("✖️ Error")
-        .setDescription(`Aurum: Oops, you cant transfer yourself balance!`)
+        .setDescription(`Purrfit: Oops, you cant transfer yourself balance!`)
         .setThumbnail(errorIcon);
     if (interaction.deferred || interaction.replied) {
         await interaction.editReply({ embeds: [embed] });
@@ -194,7 +194,7 @@ export async function botTargetEmbed(interaction: ChatInputCommandInteraction) {
     const embed = new EmbedBuilder()
         .setColor(embColor)
         .setTitle("✖️ Error")
-        .setDescription(`Aurum: Oops, you cant transfer balance to a bot!`)
+        .setDescription(`Purrfit: Oops, you cant transfer balance to a bot!`)
         .setThumbnail(errorIcon);
     if (interaction.deferred || interaction.replied) {
         await interaction.editReply({ embeds: [embed] });
