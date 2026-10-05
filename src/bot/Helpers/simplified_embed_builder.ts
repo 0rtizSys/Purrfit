@@ -147,7 +147,7 @@ export async function InsuficientsFundsEmbed(
     currentBalance: number,
     currentAmount: number,
     symbol: string,
-    type: "withdraw" | "deposit" | "transfer",
+    type: "withdraw" | "deposit" | "transfer" | "spend",
 ) {
     const embed = new EmbedBuilder()
         .setColor(embColor)

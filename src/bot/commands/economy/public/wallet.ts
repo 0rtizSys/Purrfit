@@ -14,6 +14,7 @@ import {
 import { getEcoSymbol } from "../../../services/database/repository/servers/get_eco_symbol";
 
 import { requireGuild } from "../../../Helpers/require_guild";
+import { logger } from "../../../services/logger";
 
 export interface Command {
     data: SlashCommandBuilder | SlashCommandOptionsOnlyBuilder;
@@ -50,7 +51,7 @@ export const getWalletBalance: Command = {
                 eph: !isPublic,
             });
         } catch (e) {
-            console.log(e);
+            logger.error("Error en comando wallet_balance", { error: e });
             await internalErrorEmbed(interaction);
         }
     },

@@ -16,6 +16,7 @@ import {
 
 import { requireGuild } from "../../../Helpers/require_guild";
 import { getEcoSymbol } from "../../../services/database/repository/servers/get_eco_symbol";
+import { logger } from "../../../services/logger";
 
 export interface Command {
     data: SlashCommandBuilder | SlashCommandOptionsOnlyBuilder;
@@ -127,7 +128,7 @@ export const addBalanceCommand: Command = {
                 thumType: "success",
             });
         } catch (error) {
-            console.error(error);
+            logger.error("Error en comando add_balance", { error: error });
             await internalErrorEmbed(interaction);
         }
     },

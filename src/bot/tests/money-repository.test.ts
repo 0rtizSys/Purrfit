@@ -131,8 +131,8 @@ describe("transferSafe", () => {
 
         const result = await transferSafe("z-user", "a-user", "guild-1", 200);
 
-        expect(result).toEqual({ ok: true });
-        const [insertCall, lockCall, updateCall] =
+        expect(result).toEqual({ ok: true, received: 200, tax: 0 });
+        const [insertCall, lockCall, , updateCall] =
             client.query.mock.calls.filter(
                 ([sql]) => !["BEGIN", "COMMIT"].includes(String(sql).trim()),
             );
@@ -140,8 +140,42 @@ describe("transferSafe", () => {
         expect(insertCall[1]).toEqual(["a-user", "z-user", "guild-1"]);
         expect(lockCall[0]).toContain("ORDER BY user_id");
         expect(lockCall[1]).toEqual(["guild-1", ["a-user", "z-user"]]);
-        expect(updateCall[1]).toEqual(["z-user", "a-user", 200, "guild-1"]);
+        expect(updateCall[1]).toEqual([
+            "z-user",
+            "a-user",
+            200,
+            "guild-1",
+            200,
+        ]);
         expect(controlStatements(client)).toEqual(["BEGIN", "COMMIT"]);
+    });
+
+    it("takes the server tax from the received amount and sends it to the treasury", async () => {
+        const client = createClient((sql) => {
+            if (sql.includes("FOR UPDATE"))
+                return {
+                    rowCount: 2,
+                    rows: [
+                        { user_id: "a-user", bank: "0" },
+                        { user_id: "z-user", bank: "500" },
+                    ],
+                };
+            if (sql.includes("SELECT tax_bps"))
+                return { rowCount: 1, rows: [{ tax_bps: 250 }] };
+            return { rowCount: 1, rows: [] };
+        });
+
+        const result = await transferSafe("z-user", "a-user", "guild-1", 200);
+
+        expect(result).toEqual({ ok: true, received: 195, tax: 5 });
+        const update = client.query.mock.calls.find(([sql]) =>
+            String(sql).includes("UPDATE clients"),
+        );
+        expect(update?.[1]).toEqual(["z-user", "a-user", 200, "guild-1", 195]);
+        const treasury = client.query.mock.calls.find(([sql]) =>
+            String(sql).includes("treasury"),
+        );
+        expect(treasury?.[1]).toEqual(["guild-1", 5]);
     });
 
     it("returns insufficient funds without updating", async () => {

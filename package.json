@@ -1,15 +1,22 @@
 {
   "name": "purrfit",
-  "version": "1.0.0",
-  "description": "",
+  "version": "2.0.0",
+  "description": "Purrfit, a Discord economy bot",
   "license": "ISC",
   "author": "me",
-  "main": "index.js",
+  "main": "dist/bot/index.js",
   "scripts": {
     "dev": "tsc --watch",
+    "build": "tsc",
+    "start": "node dist/scripts/migrate.js && node dist/bot/index.js",
     "compile": "npx tsc && node dist/bot/index.js",
+    "init": "node dist/bot/index.js",
+    "migrate": "node dist/scripts/migrate.js",
+    "deploy-commands": "node dist/scripts/deploy_commands.js",
     "test": "jest",
-    "init": "node dist/bot/index.js"
+    "test:integration": "jest src/bot/tests/integration",
+    "lint": "eslint src",
+    "typecheck": "tsc --noEmit"
   },
   "jest": {
     "preset": "ts-jest",
@@ -17,7 +24,10 @@
     "testPathIgnorePatterns": [
       "/node_modules/",
       "/dist/"
-    ]
+    ],
+    "moduleNameMapper": {
+      "^(\\.{1,2}/.*)\\.js$": "$1"
+    }
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",
@@ -39,5 +49,8 @@
     "dotenv": "^17.4.2",
     "pg": "^8.20.0",
     "zod": "^4.3.6"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

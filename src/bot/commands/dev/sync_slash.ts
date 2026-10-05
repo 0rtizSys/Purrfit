@@ -1,25 +1,23 @@
 import {
     SlashCommandBuilder,
-    SlashCommandOptionsOnlyBuilder,
     ChatInputCommandInteraction,
     MessageFlags,
-    REST,
-    Routes,
 } from "discord.js";
-import * as dotenv from "dotenv";
+import { Command } from "../types";
 import { notEnoughPermsEmbed } from "../../Helpers/simplified_embed_builder";
+import {
+    deployCommands,
+    readDeployEnv,
+} from "../../services/discord/deploy_commands";
+import { logger } from "../../services/logger";
 
-dotenv.config();
-
-export interface Command {
-    data: SlashCommandBuilder | SlashCommandOptionsOnlyBuilder;
-    execute: (interaction: ChatInputCommandInteraction) => Promise<void>;
-}
-
+//? Only registered in GUILD_ID (see syncer.ts devCmds), and OWNER_ID-only at runtime
 export const syncSlash: Command = {
     data: new SlashCommandBuilder()
         .setName("sync_slash_guild")
-        .setDescription("Limpia duplicados y sincroniza solo en la Guild"),
+        .setDescription(
+            "Publish global commands and dev commands (owner only)",
+        ),
 
     async execute(interaction: ChatInputCommandInteraction) {
         if (interaction.user.id !== process.env.OWNER_ID) {
@@ -30,68 +28,15 @@ export const syncSlash: Command = {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
         try {
-            const { cmds } = await import("../../syncer");
-
-            const rest = new REST({ version: "10" }).setToken(
-                process.env.TOKEN!,
-            );
-            const payload = cmds
-                .filter((c) => c && c.data)
-                .map((c) => c.data.toJSON());
-
-            await rest.put(
-                Routes.applicationGuildCommands(
-                    process.env.CLIENT_ID!,
-                    process.env.GUILD_ID!,
-                ),
-                { body: payload },
-            );
-
+            const summary = await deployCommands(readDeployEnv());
             await interaction.editReply({
-                content: `✅ Guild sincronizada con \`${payload.length}\` comandos.`,
+                content: `✅ \`${summary.global}\` comandos globales y \`${summary.guild}\` de desarrollo publicados.`,
             });
-        } catch (e) {
-            console.error(e);
+        } catch (error) {
+            logger.error("Error al sincronizar comandos", { error });
             await interaction.editReply({
                 content: "❌ Error en la sincronización.",
             });
         }
     },
 };
-
-if (require.main === module) {
-    (async () => {
-        console.log("🧹 Iniciando LIMPIEZA PROFUNDA...");
-
-        try {
-            const { cmds } = await import("../../syncer");
-
-            const rest = new REST({ version: "10" }).setToken(
-                process.env.TOKEN!,
-            );
-            const payload = cmds
-                .filter((c) => c && c.data)
-                .map((c) => c.data.toJSON());
-
-            console.log("1️⃣  Borrando Globales...");
-            await rest.put(Routes.applicationCommands(process.env.CLIENT_ID!), {
-                body: [],
-            });
-
-            console.log(
-                `2️⃣  Instalando ${payload.length} comandos en Guild...`,
-            );
-            await rest.put(
-                Routes.applicationGuildCommands(
-                    process.env.CLIENT_ID!,
-                    process.env.GUILD_ID!,
-                ),
-                { body: payload },
-            );
-
-            console.log("\n✨ ¡LISTO! Reinicia Discord (Ctrl+R).");
-        } catch (error) {
-            console.error("❌ Falló el script:", error);
-        }
-    })();
-}

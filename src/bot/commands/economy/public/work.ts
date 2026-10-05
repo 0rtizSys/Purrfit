@@ -19,6 +19,7 @@ import {
     sendSimpleEmbed,
     internalErrorEmbed,
 } from "../../../Helpers/simplified_embed_builder";
+import { logger } from "../../../services/logger";
 
 const TEMP_MIN: number = 100;
 const TEMP_MAX: number = 1000;
@@ -78,7 +79,7 @@ export const workCommand: Command = {
                 eph: !isPublic,
             });
         } catch (e) {
-            console.error(e);
+            logger.error("Error en comando work", { error: e });
             await internalErrorEmbed(interaction);
         }
     },

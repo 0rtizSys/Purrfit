@@ -22,6 +22,7 @@ import {
     isCoinSide,
     settleCoinFlip,
 } from "../../services/games/coin_flip";
+import { logger } from "../../services/logger";
 
 const DEFAULT_BET = 50;
 
@@ -132,7 +133,7 @@ export const coinFlipCommand: Command = {
                 ],
             });
         } catch (error) {
-            console.error("Error en comando coinflip:", error);
+            logger.error("Error en comando coinflip", { error: error });
             await internalErrorEmbed(interaction);
         }
     },

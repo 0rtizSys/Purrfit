@@ -23,6 +23,7 @@ import {
 } from "../../../Helpers/simplified_embed_builder";
 
 import { transferInternalSafe } from "../../../services/database/repository/clients/withdraw-transfer";
+import { logger } from "../../../services/logger";
 
 export const withdrawCommand: Command = {
     data: new SlashCommandBuilder()
@@ -82,7 +83,7 @@ export const withdrawCommand: Command = {
                     : `${interaction.user} You have successfully withdrawn \`${ecoSymbol} ${amount}\` from your bank account`,
             });
         } catch (e) {
-            console.log(e);
+            logger.error("Error en comando withdraw", { error: e });
             await internalErrorEmbed(interaction);
         }
     },

@@ -19,6 +19,7 @@ import {
 } from "../../../Helpers/simplified_embed_builder";
 
 import { requireGuild } from "../../../Helpers/require_guild";
+import { logger } from "../../../services/logger";
 
 export interface Command {
     data: SlashCommandBuilder | SlashCommandOptionsOnlyBuilder;
@@ -70,7 +71,7 @@ export const setCdTimeAdmin: Command = {
                 thumType: "success",
             });
         } catch (err) {
-            console.log(err);
+            logger.error("Error en comando set_cooldown_time", { error: err });
             await internalErrorEmbed(interaction);
         }
     },

@@ -16,6 +16,7 @@ import { requireGuild } from "../../../Helpers/require_guild";
 import { Command } from "../../types";
 
 import { getEcoSymbol } from "../../../services/database/repository/servers/get_eco_symbol";
+import { logger } from "../../../services/logger";
 
 export const getBankBalance: Command = {
     data: new SlashCommandBuilder()
@@ -47,7 +48,7 @@ export const getBankBalance: Command = {
                 eph: !isPublic,
             });
         } catch (e) {
-            console.log(e);
+            logger.error("Error en comando bank_balance", { error: e });
             await internalErrorEmbed(interaction);
         }
     },
