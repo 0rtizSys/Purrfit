@@ -1,16 +1,25 @@
 // ? =========================
-// ? Utils
+// ? Slash commands (the only ones left)
 // ? =========================
 
-import { pingSlash } from "./commands/utils/ping.js";
+import type { Command } from "./commands/types.js";
 import { helpCommand } from "./commands/utils/help.js";
+import { dashboardCommand } from "./commands/utils/dashboard.js";
+import { supportCommand } from "./commands/utils/support.js";
+
+// ? =========================
+// ? Prefix commands: Utils
+// ? =========================
+
+import { pingCommand } from "./commands/utils/ping.js";
+import { prefixCommand } from "./commands/utils/prefix.js";
 import { deleteMyDataCommand } from "./commands/utils/delete_my_data.js";
 
 // ! =========================
 // ! Development
 // ! =========================
 
-import { syncSlash } from "./commands/dev/sync_slash.js";
+import { syncCommands } from "./commands/dev/sync.js";
 
 // * =========================
 // * Economy - Public
@@ -47,14 +56,26 @@ import { setEconomySymbolAdmin } from "./commands/economy/admin/set_eco_symbol.a
 import { setTaxRateAdmin } from "./commands/economy/admin/set_tax_rate.admin.js";
 import { setInterestRateAdmin } from "./commands/economy/admin/set_interest_rate.admin.js";
 
+import { buildRegistry } from "./framework/registry.js";
+import type { CommandCategory } from "./framework/types.js";
+
 // ! =========================
 // ! Command Registry
 // ! =========================
 
-//? Public commands are registered globally (every server that adds the bot).
-//? Grouped by category for /help; order here is the order shown there.
-export const commandCategories = [
+//? Everything is a prefix command (`$>work`) except these three, which stay
+//? slash commands and are published globally by `npm run deploy-commands`.
+export const slashCmds: Command[] = [
+    helpCommand,
+    dashboardCommand,
+    supportCommand,
+];
+
+//? Grouped by category for /help and the dashboard; the order here is the
+//? order shown there. `owner` commands are hidden from both.
+export const commandCategories: CommandCategory[] = [
     {
+        id: "economy",
         title: "💰 Economy",
         commands: [
             workCommand,
@@ -67,9 +88,10 @@ export const commandCategories = [
             economyInfoCommand,
         ],
     },
-    { title: "📈 Crypto", commands: [cryptoCommand] },
-    { title: "🎲 Games", commands: [coinFlipCommand] },
+    { id: "crypto", title: "📈 Crypto", commands: [cryptoCommand] },
+    { id: "games", title: "🎲 Games", commands: [coinFlipCommand] },
     {
+        id: "admin",
         title: "🛠️ Admin",
         commands: [
             addBalanceCommand,
@@ -80,14 +102,15 @@ export const commandCategories = [
         ],
     },
     {
+        id: "utility",
         title: "ℹ️ Utility",
-        commands: [helpCommand, pingSlash, deleteMyDataCommand],
+        commands: [prefixCommand, pingCommand, deleteMyDataCommand],
     },
+    //! Developer commands: owner-only, never listed in /help or the dashboard
+    { id: "dev", title: "🧪 Developer", commands: [syncCommands] },
 ];
 
-export const publicCmds = commandCategories.flatMap((c) => c.commands);
+export const prefixCmds = commandCategories.flatMap((c) => c.commands);
 
-//! Developer commands are only registered in GUILD_ID (your own server)
-export const devCmds = [syncSlash];
-
-export const cmds = [...publicCmds, ...devCmds];
+//? Throws at startup if two commands share a name or an alias
+export const registry = buildRegistry(prefixCmds);

@@ -10,7 +10,10 @@ dotenv.config({ quiet: true });
     try {
         const summary = await deployCommands(readDeployEnv());
         console.log(
-            `✅ ${summary.global} comandos globales publicados, ${summary.guild} de desarrollo en GUILD_ID.`,
+            `✅ ${summary.global} comandos slash publicados globalmente (/help, /dashboard, /support).` +
+                (summary.guildCleared
+                    ? " Se quitaron los comandos antiguos de GUILD_ID."
+                    : ""),
         );
     } catch (err) {
         console.error("❌ No se pudieron publicar los comandos:", err);

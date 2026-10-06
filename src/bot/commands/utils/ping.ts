@@ -1,31 +1,23 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction } from "discord.js";
-
 import { sendSimpleEmbed } from "../../Helpers/simplified_embed_builder";
+import type { PrefixCommand } from "../../framework/types";
 
-export interface Command {
-    data: SlashCommandBuilder;
-    execute: (interaction: ChatInputCommandInteraction) => Promise<void>;
-}
+export const pingCommand: PrefixCommand = {
+    name: "ping",
+    description: "Check the bot latency",
 
-export const pingSlash: Command = {
-    data: new SlashCommandBuilder()
-        .setName("ping")
-        .setDescription("Sends bot latency"),
+    async execute(ctx) {
+        //? How long the bot took to see the message (Discord's clock vs ours)
+        const bot = Math.max(Date.now() - ctx.message.createdTimestamp, 0);
+        const api = ctx.client.ws.ping;
 
-    async execute(interaction: ChatInputCommandInteraction) {
-        await interaction.reply({
-            content: "🏓 pinging...",
-        });
-        const sent = await interaction.fetchReply();
-        const ping = sent.createdTimestamp - interaction.createdTimestamp;
-
-        await sendSimpleEmbed(interaction, {
-            title: "Pong 🏓",
+        await sendSimpleEmbed(ctx, {
+            title: "🏓 Pong!",
             fields: [
-                { name: "Latency", value: `${ping}ms 📶`, inline: true },
+                { name: "📶 Bot", value: `\`${bot}ms\``, inline: true },
+                //? ws.ping is -1 until the first heartbeat after login
                 {
-                    name: "API",
-                    value: `${interaction.client.ws.ping}ms 🛜`,
+                    name: "🛜 Discord API",
+                    value: api >= 0 ? `\`${api}ms\`` : "`measuring…`",
                     inline: true,
                 },
             ],

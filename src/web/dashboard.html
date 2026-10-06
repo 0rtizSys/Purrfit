@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="es">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Panel — Purrfit</title>
+        <meta name="robots" content="noindex" />
+        <meta name="theme-color" content="#07090a" />
+        <link rel="icon" href="/assets/images/purrfit_pfp.jpg" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Inter:wght@400;500;600&display=swap"
+        />
+        <link rel="stylesheet" href="/css/styles.css" />
+        <link rel="stylesheet" href="/css/panel.css" />
+    </head>
+    <body class="dash-page">
+        <a class="skip-link" href="#dash-main">Saltar al contenido</a>
+        <div class="bg-glow" aria-hidden="true"></div>
+
+        <header class="nav scrolled">
+            <a class="brand" href="/">
+                <img
+                    src="/assets/images/purrfit_pfp.jpg"
+                    alt=""
+                    width="32"
+                    height="32"
+                />
+                <span>Purrfit</span>
+            </a>
+            <nav aria-label="Sesión">
+                <a href="/">Inicio</a>
+                <button
+                    class="btn btn-small btn-ghost"
+                    id="logout"
+                    type="button"
+                >
+                    Cerrar sesión
+                </button>
+            </nav>
+        </header>
+
+        <main class="dash" id="dash-main">
+            <h1>Panel</h1>
+            <p class="toast" id="toast" role="status" hidden></p>
+            <p
+                class="sr-only"
+                id="sr-live"
+                role="status"
+                aria-live="polite"
+            ></p>
+
+            <section class="panel" id="legal-gate" hidden>
+                <h2>Antes de continuar</h2>
+                <p class="lead">
+                    Actualizamos nuestros documentos. Para seguir usando el
+                    panel debes aceptar las versiones actuales:
+                </p>
+                <ul id="legal-docs"></ul>
+                <label class="check">
+                    <input type="checkbox" id="legal-check" />
+                    <span>He leído y acepto los documentos indicados.</span>
+                </label>
+                <button class="btn" id="legal-accept" type="button" disabled>
+                    Aceptar y continuar
+                </button>
+            </section>
+
+            <div id="content" hidden>
+                <div
+                    class="dash-tabs"
+                    id="dash-tabs"
+                    role="tablist"
+                    aria-label="Secciones del panel"
+                >
+                    <button
+                        class="dash-tab"
+                        id="tab-servidores"
+                        role="tab"
+                        type="button"
+                        data-tab="servidores"
+                        aria-selected="false"
+                        aria-controls="panel-servidores"
+                        tabindex="-1"
+                    >
+                        Servidores
+                    </button>
+                    <button
+                        class="dash-tab"
+                        id="tab-comandos"
+                        role="tab"
+                        type="button"
+                        data-tab="comandos"
+                        aria-selected="false"
+                        aria-controls="panel-comandos"
+                        tabindex="-1"
+                    >
+                        Comandos
+                    </button>
+                    <button
+                        class="dash-tab"
+                        id="tab-mercados"
+                        role="tab"
+                        type="button"
+                        data-tab="mercados"
+                        aria-selected="false"
+                        aria-controls="panel-mercados"
+                        tabindex="-1"
+                    >
+                        Mercados
+                    </button>
+                    <button
+                        class="dash-tab"
+                        id="tab-cuenta"
+                        role="tab"
+                        type="button"
+                        data-tab="cuenta"
+                        aria-selected="false"
+                        aria-controls="panel-cuenta"
+                        tabindex="-1"
+                    >
+                        Cuenta
+                    </button>
+                </div>
+
+                <!-- SERVIDORES -->
+                <section
+                    class="tabpanel"
+                    id="panel-servidores"
+                    role="tabpanel"
+                    aria-labelledby="tab-servidores"
+                    tabindex="0"
+                    hidden
+                >
+                    <div class="panel">
+                        <h2>Tus servidores</h2>
+                        <p class="lead">
+                            Elige un servidor donde esté Purrfit para cambiar su
+                            economía, o invita al bot a otro.
+                        </p>
+                        <div id="guild-list-box" class="guild-list-box"></div>
+                    </div>
+                    <div class="panel" id="guild-form-box" hidden></div>
+                </section>
+
+                <!-- COMANDOS -->
+                <section
+                    class="tabpanel"
+                    id="panel-comandos"
+                    role="tabpanel"
+                    aria-labelledby="tab-comandos"
+                    tabindex="0"
+                    hidden
+                >
+                    <div class="panel">
+                        <h2>Comandos</h2>
+                        <p class="lead">
+                            Cada servidor puede cambiar su prefijo. Elige uno
+                            para ver los comandos tal como los escribirías allí.
+                        </p>
+                        <div class="cmd-toolbar">
+                            <label class="form-field">
+                                <span class="form-label">Buscar comando</span>
+                                <input
+                                    id="cmd-search"
+                                    type="search"
+                                    placeholder="work, transfer, banco…"
+                                    autocomplete="off"
+                                />
+                            </label>
+                            <label class="form-field">
+                                <span class="form-label">Servidor</span>
+                                <select id="cmd-guild">
+                                    <option value="">
+                                        Prefijo por defecto
+                                    </option>
+                                </select>
+                            </label>
+                            <p class="prefix-pill">
+                                Prefijo: <code id="cmd-prefix">—</code>
+                            </p>
+                        </div>
+                    </div>
+                    <div id="cmd-body" class="cmd-body"></div>
+                </section>
+
+                <!-- MERCADOS -->
+                <section
+                    class="tabpanel"
+                    id="panel-mercados"
+                    role="tabpanel"
+                    aria-labelledby="tab-mercados"
+                    tabindex="0"
+                    hidden
+                >
+                    <div class="mk-top">
+                        <div>
+                            <h2>Mercados</h2>
+                            <p class="lead">
+                                Cinco criptomonedas simuladas. Una vela nueva
+                                cada 5 minutos.
+                            </p>
+                        </div>
+                        <p class="mk-live off" id="mk-live">
+                            <i aria-hidden="true"></i>
+                            <span id="mk-live-text">Conectando…</span>
+                        </p>
+                    </div>
+
+                    <div
+                        class="mk-picker"
+                        id="mk-picker"
+                        role="radiogroup"
+                        aria-label="Activo"
+                    ></div>
+
+                    <div class="mk-card">
+                        <div class="mk-card-head">
+                            <div class="mk-quote">
+                                <span class="mk-sym" id="mk-sym">PURR</span>
+                                <span class="mk-name" id="mk-name"></span>
+                                <strong class="mk-price num" id="mk-price"
+                                    >—</strong
+                                >
+                                <span class="chg flat" id="mk-change">—</span>
+                                <span class="mk-24h">24 h</span>
+                            </div>
+                            <div
+                                class="mk-intervals"
+                                id="mk-intervals"
+                                role="radiogroup"
+                                aria-label="Intervalo de las velas"
+                            ></div>
+                        </div>
+                        <div class="mk-stage">
+                            <div
+                                class="mk-chart"
+                                id="mk-chart"
+                                role="img"
+                            ></div>
+                            <div class="mk-legend flat" id="mk-legend" hidden>
+                                <span class="lg-time" id="lg-time"></span>
+                                <span title="Apertura"
+                                    ><em>A</em><b class="num" id="lg-o"></b
+                                ></span>
+                                <span
+                                    ><em>Máx</em><b class="num" id="lg-h"></b
+                                ></span>
+                                <span
+                                    ><em>Mín</em><b class="num" id="lg-l"></b
+                                ></span>
+                                <span title="Cierre"
+                                    ><em>C</em><b class="num" id="lg-c"></b
+                                ></span>
+                                <span class="lg-ch num" id="lg-ch"></span>
+                            </div>
+                            <div
+                                class="mk-overlay"
+                                id="mk-overlay"
+                                role="status"
+                                hidden
+                            ></div>
+                        </div>
+                        <p class="mk-foot">
+                            <span
+                                >Gráficos:
+                                <a
+                                    href="https://www.tradingview.com/"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    >TradingView Lightweight Charts™</a
+                                ></span
+                            >
+                            <span>Precios simulados, no son dinero real.</span>
+                        </p>
+                    </div>
+
+                    <div class="mk-overview">
+                        <h3>Resumen del mercado</h3>
+                        <p class="mk-table-state" id="mk-table-state" hidden>
+                            No se pudo cargar el resumen.
+                            <button
+                                class="btn btn-small btn-ghost"
+                                id="mk-table-retry"
+                                type="button"
+                            >
+                                Reintentar
+                            </button>
+                        </p>
+                        <table class="mk-table">
+                            <caption class="sr-only">
+                                Precio, variación y rango de las últimas 24
+                                horas de cada moneda. Pulsa una moneda para ver
+                                su gráfico.
+                            </caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Activo</th>
+                                    <th scope="col">Precio</th>
+                                    <th scope="col">24 h</th>
+                                    <th scope="col">Máx. 24 h</th>
+                                    <th scope="col">Mín. 24 h</th>
+                                    <th scope="col">Rango</th>
+                                </tr>
+                            </thead>
+                            <tbody id="mk-rows"></tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- CUENTA -->
+                <section
+                    class="tabpanel"
+                    id="panel-cuenta"
+                    role="tabpanel"
+                    aria-labelledby="tab-cuenta"
+                    tabindex="0"
+                    hidden
+                >
+                    <section class="panel" id="estado">
+                        <h2>Estado del bot</h2>
+                        <div class="status">
+                            <span class="dot unknown" id="status-dot"></span>
+                            <div>
+                                <strong id="status-label">Comprobando…</strong>
+                                <small id="status-detail"></small>
+                            </div>
+                        </div>
+                        <dl class="stats-grid" id="status-stats"></dl>
+                    </section>
+
+                    <section class="panel" id="actividad" hidden>
+                        <h2>Actividad</h2>
+                        <dl class="stats-grid" id="activity-stats"></dl>
+                    </section>
+
+                    <section class="panel" id="cuenta">
+                        <h2>Cuenta</h2>
+                        <div class="account">
+                            <img
+                                id="acc-avatar"
+                                src="/assets/images/purrfit_pfp.jpg"
+                                alt=""
+                                width="64"
+                                height="64"
+                            />
+                            <div>
+                                <strong id="acc-name"></strong>
+                                <small id="acc-username"></small>
+                            </div>
+                        </div>
+                        <dl class="stats-grid" id="account-stats"></dl>
+                        <div class="actions">
+                            <button
+                                class="btn btn-ghost"
+                                id="revoke-others"
+                                type="button"
+                            >
+                                Cerrar mis otras sesiones
+                            </button>
+                        </div>
+                    </section>
+
+                    <section class="panel danger" id="peligro">
+                        <h2>Eliminar cuenta web</h2>
+                        <p class="lead">
+                            Borra tu cuenta del sitio web, tus sesiones y tus
+                            aceptaciones. No borra tus datos del bot (usa
+                            <code>$&gt;delete_my_data</code> en Discord para
+                            eso; el prefijo puede ser otro en tu servidor).
+                        </p>
+                        <label class="field">
+                            Escribe <code>DELETE</code> para confirmar
+                            <input id="delete-confirm" autocomplete="off" />
+                        </label>
+                        <button
+                            class="btn btn-danger"
+                            id="delete-account"
+                            type="button"
+                            disabled
+                        >
+                            Eliminar mi cuenta
+                        </button>
+                    </section>
+                </section>
+            </div>
+        </main>
+
+        <footer>
+            <span>© <span id="year"></span> Purrfit</span>
+            <span>
+                <a href="/terms">Términos</a> ·
+                <a href="/privacy">Privacidad</a>
+            </span>
+        </footer>
+
+        <script src="/js/ui.js"></script>
+        <script src="/js/api.js"></script>
+        <script src="/js/tabs.js"></script>
+        <script src="/js/servers.js"></script>
+        <script src="/js/commands.js"></script>
+        <script src="/js/lightweight-charts.js"></script>
+        <script src="/js/markets.js"></script>
+        <script src="/js/dashboard.js"></script>
+    </body>
+</html>

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Purrfit — Legal</title>
+        <meta name="theme-color" content="#07090a" />
+        <link rel="icon" href="/assets/images/purrfit_pfp.jpg" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Inter:wght@400;500;600&display=swap"
+        />
+        <link rel="stylesheet" href="/css/styles.css" />
+    </head>
+    <body class="legal-page">
+        <div class="bg-glow" aria-hidden="true"></div>
+
+        <header class="nav scrolled" id="nav">
+            <a class="brand" href="/">
+                <img
+                    src="/assets/images/purrfit_pfp.jpg"
+                    alt=""
+                    width="32"
+                    height="32"
+                />
+                <span>Purrfit</span>
+            </a>
+            <nav>
+                <a href="/terms" data-doc="terms">Terms</a>
+                <a href="/privacy" data-doc="privacy">Privacy</a>
+                <a class="btn btn-small" href="/">← Back</a>
+            </nav>
+        </header>
+
+        <main class="legal">
+            <aside class="toc" id="toc" aria-label="On this page"></aside>
+            <article class="doc" id="doc" aria-live="polite">
+                <p class="lead">Loading…</p>
+            </article>
+        </main>
+
+        <footer>
+            <span>© <span id="year"></span> Purrfit</span>
+            <span>Not affiliated with Discord Inc.</span>
+        </footer>
+
+        <script src="/js/legal.js"></script>
+    </body>
+</html>

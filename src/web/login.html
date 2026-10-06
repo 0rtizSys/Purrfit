@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="es">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Entrar — Purrfit</title>
+        <meta name="robots" content="noindex" />
+        <meta name="theme-color" content="#07090a" />
+        <link rel="icon" href="/assets/images/purrfit_pfp.jpg" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Inter:wght@400;500;600&display=swap"
+        />
+        <link rel="stylesheet" href="/css/styles.css" />
+    </head>
+    <body class="auth-page">
+        <div class="bg-glow" aria-hidden="true"></div>
+
+        <header class="nav scrolled">
+            <a class="brand" href="/">
+                <img
+                    src="/assets/images/purrfit_pfp.jpg"
+                    alt=""
+                    width="32"
+                    height="32"
+                />
+                <span>Purrfit</span>
+            </a>
+            <nav>
+                <a class="btn btn-small btn-ghost" href="/">← Inicio</a>
+            </nav>
+        </header>
+
+        <main class="auth-wrap">
+            <section class="auth-card">
+                <img
+                    class="auth-avatar"
+                    src="/assets/images/purrfit_pfp.jpg"
+                    alt=""
+                    width="88"
+                    height="88"
+                />
+                <h1>Entra a Purrfit</h1>
+                <p class="lead">
+                    Inicia sesión con tu cuenta de Discord. Purrfit no usa
+                    contraseñas.
+                </p>
+
+                <p class="auth-notice" id="notice" role="alert" hidden></p>
+
+                <label class="check">
+                    <input type="checkbox" id="accept" />
+                    <span>
+                        He leído y acepto los
+                        <a href="/terms" target="_blank" rel="noopener"
+                            >Términos de Servicio</a
+                        >
+                        y la
+                        <a href="/privacy" target="_blank" rel="noopener"
+                            >Política de Privacidad</a
+                        >.
+                        <small
+                            >Necesario solo la primera vez, para
+                            registrarte.</small
+                        >
+                    </span>
+                </label>
+
+                <a class="btn btn-discord" id="login-btn" href="/auth/discord">
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                        <path
+                            d="M19.5 5.5A16 16 0 0 0 15.6 4.300l-.5 1a14.800 14.800 0 0 0-4.200 0l-.5-1A16 16 0 0 0 6.500 5.500C4 9.300 3.300 13 3.700 16.600a16 16 0 0 0 4.800 2.400l1-1.600a10.500 10.500 0 0 1-1.600-.8l.4-.3a11.500 11.500 0 0 0 10 0l.4.300c-.5.300-1 .600-1.600.800l1 1.600a16 16 0 0 0 4.800-2.400c.5-4.200-.7-7.900-3-11.100z"
+                        />
+                        <circle cx="9.500" cy="12.300" r="1.200" />
+                        <circle cx="14.500" cy="12.300" r="1.200" />
+                    </svg>
+                    Continuar con Discord
+                </a>
+
+                <p class="auth-fine">
+                    Solo pedimos el permiso <code>identify</code>: tu ID, nombre
+                    y avatar. Nunca tu correo ni tus servidores.
+                </p>
+            </section>
+        </main>
+
+        <footer>
+            <span>© <span id="year"></span> Purrfit</span>
+            <span>
+                <a href="/terms">Términos</a> ·
+                <a href="/privacy">Privacidad</a>
+            </span>
+        </footer>
+
+        <script src="/js/login.js"></script>
+    </body>
+</html>

@@ -17,3 +17,15 @@ coverage/
 .claude
 .agents
 skills-lock.json
+# Local terminal monitor (Rust), kept out of the repo
+monitor/
+
+# Snapshot del mercado escrito por el worker de src/shared
+data/
+
+# The website backend is private and lives in its own repository. These keep it
+# (and anything that would reveal it) out of this public one by accident.
+server/
+server-private/
+backend/
+*.map

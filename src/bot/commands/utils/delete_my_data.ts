@@ -1,56 +1,48 @@
-import { ChatInputCommandInteraction, SlashCommandBuilder } from "discord.js";
-
-import { Command } from "../types";
-import {
-    internalErrorEmbed,
-    sendSimpleEmbed,
-} from "../../Helpers/simplified_embed_builder";
+import type { PrefixCommand } from "../../framework/types";
+import { cmd } from "../../framework/context";
+import { sendSimpleEmbed } from "../../Helpers/simplified_embed_builder";
 import { deleteUserData } from "../../services/database/repository/clients/delete_data";
 import { logger } from "../../services/logger";
 
-export const deleteMyDataCommand: Command = {
-    data: new SlashCommandBuilder()
-        .setName("delete_my_data")
-        .setDescription(
-            "Permanently delete all your Purrfit data in every server",
-        )
-        .addBooleanOption((opt) =>
-            opt
-                .setName("confirm")
-                .setDescription(
-                    "Set to True to confirm. This cannot be undone.",
-                )
-                .setRequired(true),
-        ),
+export const deleteMyDataCommand: PrefixCommand = {
+    name: "delete_my_data",
+    aliases: ["deletedata"],
+    description: "Permanently delete all your Purrfit data in every server",
+    args: [
+        {
+            name: "confirm",
+            kind: "choice",
+            choices: ["confirm"],
+            optional: true,
+            description:
+                "Type confirm to delete your data. This cannot be undone.",
+        },
+    ],
 
-    //? Works in DMs too: it is about the user, not a server
-    async execute(interaction: ChatInputCommandInteraction) {
-        const confirmed = interaction.options.getBoolean("confirm", true);
+    async execute(ctx) {
+        const confirmed = ctx.args.stringOpt("confirm") !== null;
         if (!confirmed) {
-            await sendSimpleEmbed(interaction, {
-                title: "Nothing was deleted",
+            //? A warning, not an error: it stays in the channel so it can be read
+            await sendSimpleEmbed(ctx, {
+                title: "⚠️ This will delete your data",
                 description:
-                    "Run the command again with `confirm: True` to permanently delete your balances and coins in every server.",
-                eph: true,
+                    "Your balances (wallet and bank) and crypto holdings will be permanently removed from **every** server. Nothing was deleted yet.",
+                hint: `To confirm, type ${cmd(ctx, "delete_my_data confirm")}. This cannot be undone.`,
             });
             return;
         }
-        try {
-            const deleted = await deleteUserData(interaction.user.id);
-            logger.info("Datos de usuario eliminados a pedido", {
-                userId: interaction.user.id,
-                ...deleted,
-            });
-            await sendSimpleEmbed(interaction, {
-                title: "🗑️ Your data was deleted",
-                description:
-                    "Your balances and crypto holdings were removed from every server. An active `/work` cooldown stays until it expires.",
-                thumType: "success",
-                eph: true,
-            });
-        } catch (error) {
-            logger.error("Error en comando delete_my_data", { error });
-            await internalErrorEmbed(interaction);
-        }
+        const deleted = await deleteUserData(ctx.user.id);
+        logger.info("Datos de usuario eliminados a pedido", {
+            userId: ctx.user.id,
+            ...deleted,
+        });
+        await sendSimpleEmbed(ctx, {
+            title: "🗑️ Your data was deleted",
+            description:
+                "Your balances and crypto holdings were removed from every server.",
+            hint: `An active ${cmd(ctx, "work")} cooldown stays until it expires.`,
+            tone: "success",
+            eph: true,
+        });
     },
 };

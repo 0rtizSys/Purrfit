@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="es">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Purrfit — Bot de economía para Discord</title>
+        <meta
+            name="description"
+            content="Purrfit: economía por servidor, banco con interés, criptomonedas simuladas y juegos. Todo ficticio, todo divertido."
+        />
+        <meta name="theme-color" content="#07090a" />
+        <meta
+            property="og:title"
+            content="Purrfit — Bot de economía para Discord"
+        />
+        <meta
+            property="og:description"
+            content="Trabaja, ahorra, apuesta y opera cripto simulada en tu servidor."
+        />
+        <meta property="og:image" content="/assets/images/purrfit_pfp.jpg" />
+        <link rel="icon" href="/assets/images/purrfit_pfp.jpg" />
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+        <link
+            rel="stylesheet"
+            href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,800&family=Inter:wght@400;500;600&display=swap"
+        />
+        <link rel="stylesheet" href="css/styles.css" />
+    </head>
+    <body>
+        <div class="bg-glow" aria-hidden="true"></div>
+
+        <header class="nav" id="nav">
+            <a class="brand" href="#inicio">
+                <img
+                    src="/assets/images/purrfit_pfp.jpg"
+                    alt=""
+                    width="32"
+                    height="32"
+                />
+                <span>Purrfit</span>
+            </a>
+            <nav>
+                <a href="#presentacion">Presentación</a>
+                <a href="#informacion">Comandos</a>
+                <a href="#empezar">Empezar</a>
+                <a href="#contacto">Contacto</a>
+                <a href="/login">Entrar</a>
+                <a class="btn btn-small" href="#" data-invite>Invitar</a>
+            </nav>
+        </header>
+
+        <main>
+            <section id="inicio" class="hero">
+                <div class="hero-copy">
+                    <span class="pill"
+                        ><i></i> Economía ficticia · Cripto simulada</span
+                    >
+                    <h1>Haz crecer la <em>fortuna</em> de tu servidor</h1>
+                    <p>
+                        Trabaja, ahorra con interés diario, apuesta y opera
+                        cinco criptomonedas con gráficas en vivo. Cada servidor
+                        tiene su propia economía y sus propias reglas.
+                    </p>
+                    <div class="actions">
+                        <a class="btn" href="#" data-invite
+                            >Invitar a Purrfit</a
+                        >
+                        <a class="btn btn-ghost" href="#informacion"
+                            >Ver comandos</a
+                        >
+                    </div>
+                    <ul class="stats">
+                        <li>
+                            <b data-count="22" id="stat-commands">0</b
+                            ><span>comandos</span>
+                        </li>
+                        <li>
+                            <b data-count="5">0</b><span>criptomonedas</span>
+                        </li>
+                        <li>
+                            <b data-count="5">0</b
+                            ><span>min por tick de precio</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="hero-art" aria-hidden="true">
+                    <div class="ring"></div>
+                    <div class="portrait" id="portrait">
+                        <img
+                            src="/assets/images/purrfit_pfp.jpg"
+                            alt=""
+                            width="480"
+                            height="480"
+                        />
+                    </div>
+                    <span class="coin c1"
+                        ><svg viewBox="0 0 24 24" aria-hidden="true">
+                            <circle cx="12" cy="12" r="9" />
+                            <circle cx="12" cy="12" r="5.500" />
+                            <path d="M12 9.500v5" /></svg
+                    ></span>
+                    <span class="coin c2"
+                        ><svg viewBox="0 0 24 24" aria-hidden="true">
+                            <circle cx="12" cy="12" r="9" />
+                            <circle cx="12" cy="12" r="5.500" />
+                            <path d="M12 9.500v5" /></svg
+                    ></span>
+                    <span class="coin c3"
+                        ><svg viewBox="0 0 24 24" aria-hidden="true">
+                            <rect
+                                x="2.500"
+                                y="6"
+                                width="19"
+                                height="12"
+                                rx="2"
+                            />
+                            <circle cx="12" cy="12" r="2.800" />
+                            <path d="M6 9.500v.01M18 14.500v.01" /></svg
+                    ></span>
+                </div>
+            </section>
+
+            <div class="ticker" aria-label="Monedas simuladas de Purrfit">
+                <div class="ticker-track" id="ticker"></div>
+            </div>
+
+            <section id="presentacion" class="section">
+                <p class="eyebrow">Presentación</p>
+                <h2>Todo lo que necesita una economía de servidor</h2>
+                <div class="cards">
+                    <article class="card reveal">
+                        <span class="ico"
+                            ><svg viewBox="0 0 24 24" aria-hidden="true">
+                                <circle cx="12" cy="12" r="8.5" />
+                                <path d="M12 6.8v10.4" />
+                                <path
+                                    d="M14.6 9.4c-.5-.9-1.5-1.4-2.6-1.4-1.5 0-2.6.8-2.6 2s1.1 1.7 2.6 2 2.6.8 2.6 2-1.1 2-2.6 2c-1.1 0-2.1-.5-2.6-1.4"
+                                /></svg
+                        ></span>
+                        <h3>Economía</h3>
+                        <p>
+                            Gana con <code>$&gt;work</code>, guarda en el banco
+                            con interés diario y envía dinero a otros miembros.
+                        </p>
+                    </article>
+                    <article class="card reveal">
+                        <span class="ico"
+                            ><svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M3 4v16h18" />
+                                <path d="M7 15l4-4 3 3 6-7" />
+                                <path d="M16 7h4v4" /></svg
+                        ></span>
+                        <h3>Cripto simulada</h3>
+                        <p>
+                            Purrcoin, Meowthereum y más, con velas de 5 minutos
+                            a 1 día en el panel web.
+                        </p>
+                    </article>
+                    <article class="card reveal">
+                        <span class="ico"
+                            ><svg viewBox="0 0 24 24" aria-hidden="true">
+                                <rect
+                                    x="4"
+                                    y="4"
+                                    width="16"
+                                    height="16"
+                                    rx="4"
+                                />
+                                <circle
+                                    cx="9"
+                                    cy="9"
+                                    r="1"
+                                    fill="currentColor"
+                                />
+                                <circle
+                                    cx="15"
+                                    cy="9"
+                                    r="1"
+                                    fill="currentColor"
+                                />
+                                <circle
+                                    cx="12"
+                                    cy="12"
+                                    r="1"
+                                    fill="currentColor"
+                                />
+                                <circle
+                                    cx="9"
+                                    cy="15"
+                                    r="1"
+                                    fill="currentColor"
+                                />
+                                <circle
+                                    cx="15"
+                                    cy="15"
+                                    r="1"
+                                    fill="currentColor"
+                                /></svg
+                        ></span>
+                        <h3>Juegos</h3>
+                        <p>
+                            Apuesta en <code>$&gt;coinflip</code> y escala en el
+                            ranking del servidor.
+                        </p>
+                    </article>
+                    <article class="card reveal">
+                        <span class="ico"
+                            ><svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 7h9" />
+                                <path d="M17 7h3" />
+                                <circle cx="15" cy="7" r="2" />
+                                <path d="M4 17h3" />
+                                <path d="M11 17h9" />
+                                <circle cx="9" cy="17" r="2" />
+                                <path d="M4 12h6" />
+                                <path d="M14 12h6" />
+                                <circle cx="12" cy="12" r="2" /></svg
+                        ></span>
+                        <h3>Configurable</h3>
+                        <p>
+                            Prefijo, símbolo, cooldown, impuestos e interés: los
+                            admins mandan, también desde el panel web.
+                        </p>
+                    </article>
+                    <article class="card reveal">
+                        <span class="ico"
+                            ><svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path
+                                    d="M12 3l7 3v5.5c0 4.3-2.9 7.7-7 9.5-4.1-1.8-7-5.2-7-9.5V6l7-3z"
+                                />
+                                <path d="M9 12l2.2 2.2L15.5 10" /></svg
+                        ></span>
+                        <h3>Seguro</h3>
+                        <p>
+                            Transacciones con bloqueo de filas: sin doble gasto.
+                        </p>
+                    </article>
+                    <article class="card reveal">
+                        <span class="ico"
+                            ><svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path d="M4 7h16" />
+                                <path d="M9 7V4.5h6V7" />
+                                <path
+                                    d="M6.5 7l.9 11.2A2 2 0 0 0 9.400 20h5.200a2 2 0 0 0 2-1.800L17.500 7"
+                                />
+                                <path d="M10 11v5" />
+                                <path d="M14 11v5" /></svg
+                        ></span>
+                        <h3>Tus datos, tuyos</h3>
+                        <p>
+                            Borra todo con
+                            <code>$&gt;delete_my_data</code> cuando quieras.
+                        </p>
+                    </article>
+                </div>
+            </section>
+
+            <section id="informacion" class="section">
+                <p class="eyebrow">Información</p>
+                <h2>Comandos</h2>
+                <div
+                    class="tabs"
+                    id="tabs"
+                    role="group"
+                    aria-label="Filtrar por categoría"
+                ></div>
+                <p class="lead">
+                    Los comandos usan el prefijo <code>$&gt;</code> por defecto
+                    (por ejemplo <code>$&gt;work</code>). Cada servidor puede
+                    cambiarlo desde el panel. Solo <code>/help</code>,
+                    <code>/dashboard</code> y <code>/support</code> son comandos
+                    de barra.
+                </p>
+                <ul class="commands" id="commands"></ul>
+                <p class="lead">Monedas: <span id="coins"></span></p>
+                <p class="links">
+                    <a href="#" data-link="terms">Términos de servicio</a>
+                    <a href="#" data-link="privacy">Política de privacidad</a>
+                </p>
+            </section>
+
+            <section id="empezar" class="section">
+                <p class="eyebrow">Invitación</p>
+                <h2>Listo en tres pasos</h2>
+                <ol class="steps">
+                    <li class="reveal">
+                        <b>1</b>
+                        <div>
+                            <h3>Invita al bot</h3>
+                            <p>Un clic y eliges el servidor.</p>
+                        </div>
+                    </li>
+                    <li class="reveal">
+                        <b>2</b>
+                        <div>
+                            <h3>Configura</h3>
+                            <p>
+                                Desde el panel web, un admin ajusta prefijo,
+                                símbolo, impuestos e interés.
+                            </p>
+                        </div>
+                    </li>
+                    <li class="reveal">
+                        <b>3</b>
+                        <div>
+                            <h3>A ganar</h3>
+                            <p>
+                                Prueba <code>$&gt;work</code> y mira
+                                <code>$&gt;crypto market</code>.
+                            </p>
+                        </div>
+                    </li>
+                </ol>
+                <div class="cta reveal">
+                    <img
+                        src="/assets/images/purrfit_pfp.jpg"
+                        alt=""
+                        width="96"
+                        height="96"
+                    />
+                    <div>
+                        <h3>¿Listo para ser rico (de mentira)?</h3>
+                        <p>Todo el dinero y las monedas son ficticios.</p>
+                    </div>
+                    <a class="btn" href="#" data-invite>Invitar a Purrfit</a>
+                </div>
+            </section>
+
+            <section id="contacto" class="section">
+                <p class="eyebrow">Contacto</p>
+                <h2>¿Dudas, errores o ideas?</h2>
+                <div class="contact">
+                    <a class="card link-card" href="#" data-link="support"
+                        ><span class="ico"
+                            ><svg viewBox="0 0 24 24" aria-hidden="true">
+                                <path
+                                    d="M20.500 11.500a8 8 0 0 1-11.600 7.100L4 20l1.400-4.400A8 8 0 1 1 20.500 11.500z"
+                                />
+                                <path d="M8.500 11h7" />
+                                <path d="M8.500 14h4" /></svg
+                        ></span>
+                        <h3>Servidor de soporte</h3>
+                        <p>Pregunta y reporta en Discord.</p></a
+                    >
+                    <a class="card link-card" href="#" data-link="email"
+                        ><span class="ico"
+                            ><svg viewBox="0 0 24 24" aria-hidden="true">
+                                <rect
+                                    x="3"
+                                    y="5"
+                                    width="18"
+                                    height="14"
+                                    rx="2.500"
+                                />
+                                <path d="M3.500 7.500l8.500 6 8.500-6" /></svg
+                        ></span>
+                        <h3>Correo</h3>
+                        <p>Para temas privados o legales.</p></a
+                    >
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <span>© <span id="year"></span> Purrfit</span>
+            <span>No afiliado a Discord Inc.</span>
+        </footer>
+
+        <script src="js/config.js"></script>
+        <script src="js/main.js"></script>
+    </body>
+</html>

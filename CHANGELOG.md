@@ -1,5 +1,71 @@
 # Changelog
 
+## [Unreleased]
+**3.0.0: prefix commands and the web dashboard.** Every command is now typed in chat with a per-server prefix (default `$>`); only `/help`, `/dashboard` and `/support` stay as slash commands. Also: website frontend, bot heartbeat and versioned legal documents. The website's server is a separate, private project.
+
+### ⚠️ Breaking
+- **Slash commands are gone** except `/help`, `/dashboard` and `/support`. Type `$>work`, `$>deposit 500`, `$>crypto buy PURR 1k`... (with the server's prefix). Run `npm run deploy-commands` once to remove the old slash commands from Discord.
+- **The bot needs the Message Content intent** (Developer Portal > Bot > Privileged Gateway Intents). A bot in 100+ servers needs Discord's approval for it.
+- The `visibility` option is removed: results are public, and errors and cooldown notices are answered in the channel and deleted a few seconds later (chat has no ephemeral replies).
+- `/delete_my_data confirm:True` is now `$>delete_my_data confirm`.
+- The developer command `/sync_slash_guild` is now `$>sync` (owner only) and `GUILD_ID` is only used to clear old slash commands.
+- Migrations `004_server_prefix.sql` and `005_bot_guilds.sql` (applied automatically on start).
+- Terms of Service and Privacy Policy 3.0: they say the bot reads message text to detect the prefix (nothing is stored), and that the website now asks Discord for the `guilds` scope and stores the servers a user administers. Every user is asked to accept them again.
+
+### ✨ Added (3.0.0)
+- `src/bot/framework/`: the prefix command engine (dispatcher, typed argument parser with `1k`/`2.5m` amounts and mentions, registry that fails at startup on name clashes, owner/admin permissions, per-server prefix, temporary replies, mention-for-prefix) with its own README and ~100 tests.
+- Short **aliases** for the common commands (`$>w`, `$>bal`, `$>dep`, `$>lb`, `$>cf`, `$>c b`...).
+- `$>prefix [new_prefix]`: see or change (admins) the server prefix; `/dashboard` and `/support` link commands.
+- `bot_guilds` table kept by the bot, `npm run export-commands` and `COMMANDS_MANIFEST_PATH` for the dashboard.
+- Web dashboard: server selection and settings, command reference with each server's prefix, and candlestick charts of the crypto market.
+
+### ✨ Added
+- `src/web/`: public frontend in vanilla HTML/CSS/JS (gold, money green and black, official PFP in `assets/images/purrfit_pfp.jpg`): landing page (presentation, filterable commands, invite steps, contact), **login page** ("Continue with Discord" plus terms/privacy acceptance), **dashboard** (bot status, account, session and account-deletion actions) and legal pages that render `docs/*.md`. Custom inline SVG icons; animations respect `prefers-reduced-motion`. No inline scripts or styles, no `localStorage`/`sessionStorage`: it works under a strict Content-Security-Policy and keeps all security decisions on the server.
+- **Bot heartbeat**: migration `003_bot_heartbeat.sql` adds `bot_heartbeat`, and `src/bot/services/heartbeat.ts` writes one row per process every 30 s (Discord readiness, latency, guilds, approximate users, version, memory, last event) and marks itself `stopping` on shutdown. A failed write is logged (throttled) and never affects the bot.
+- `src/shared/`: `market_worker.ts` (`npm run worker:market`, `worker:market:dev`) publishes the simulated prices to `data/market.json` every 2 minutes using `listMarket()`; `market_snapshot.ts` with tests.
+- `src/shared/tests/frontend-boundary.test.ts`: fails if server code, secrets, SQL, source maps, inline scripts or browser-side session storage appear in `src/web/`.
+- Unit tests for the heartbeat.
+- `HEARTBEAT_LOG=true` (off by default): the heartbeat also prints a `heartbeat` log line (gateway ping, guilds, users, memory) every 30 s. The local monitor turns it on to chart those numbers.
+
+### ♻ changes
+- **Terms of Service and Privacy Policy 2.0**: now cover the website (Discord sign-in with the `identify` scope only, session and sign-in cookies, stored data, logs, retention, third parties, deleting the web account) and carry a `_Version:` line that the website backend records as the version a user accepted.
+- `.gitignore` ignores `data/`, source maps and server directories, so backend code cannot be committed here by accident.
+
+### 🔒 Security
+- The website's server code is **not** in this repository (it is public). An earlier local draft of `src/web/server.js` and `src/shared/invite.config.json` was removed before it was ever pushed.
+
+## [2.1.0] - 2026-10-05
+UI/UX overhaul: one visual system for every embed.
+
+### ✨ Added
+- `src/bot/ui/theme.ts`: tone palette (`brand` gold `#F1C40F`, `success` `#2ECC71`, `error` `#E74C3C`, `cooldown` `#5DADE2`, `crypto` `#9B59B6`, `admin` `#5865F2`, defined in `configs/embed_configs.json`) and a shared `Emoji` vocabulary.
+- `src/bot/ui/format.ts`: `formatNumber`, `money`/`moneyText` (thousands separators, no space after the symbol), `signedMoney`, `moneyChange` (`` `$100` → `$350` ``), `formatDuration` (`1m 30s`), `relativeTime` (Discord `<t:…:R>`), `formatChange`, `headline` (`###` markdown).
+- `Helpers/balance_embed.ts`: `/wallet_balance` and `/bank_balance` show the requested balance as a headline plus the other balance and the total.
+- `sendErrorEmbed(interaction, title, description, hint?)` and `buildEmbed`.
+- `/help` renders clickable command mentions (`</name:id>`, ids fetched once per process, falls back to `/name`) and lists each `/crypto` subcommand.
+- `/work` flavor lines and a "Next shift" relative time.
+
+### ♻ changes
+- `SimpleEmbedOptions`: `thumType` replaced by `tone`; new `author`, `hint` (`-# 💡` subtext line), `timestamp`, `thumbnail`, `image`, `files`, `color`. Non-error embeds get a "Purrfit" footer with the bot avatar; transactions get a timestamp; the imgur success/error thumbnails were removed.
+- `sendSimpleEmbed`: `tone: "error"` is always ephemeral; an error or `eph` message after a **public** defer deletes the deferred reply and sends a private follow-up instead of showing it to the channel.
+- Every error has a specific title and a fix hint (`InsuficientsFundsEmbed` shows balance, needed amount and shortfall; `SameUserEmbed`, `botTargetEmbed`, `notEnoughPermsEmbed`, `amountErrorEmbed`, `requireGuild`).
+- `/transfer` validates self/bot/amount before deferring, so those errors are always private; success shows From/To and tax/received.
+- `/coinflip` uses the shared insufficient-funds embed; a lost bet is red but public with footer.
+- `/crypto`: market, chart (embed color follows the trend), buy, sell and portfolio (profit vs. cost per coin) use the new layout; `crypto.ts` no longer builds its own `EmbedBuilder`.
+- Admin commands (`/set_cooldown_time`, `/set_economy_symbol`, `/set_tax_rate`, `/set_interest_rate`, `/add_balance`) use the `admin` tone with `old → new` and the acting admin as author; `/add_balance` shows the new balance.
+- `/economy_info` and `/leaderboard` show the server icon; the leaderboard highlights the caller's line.
+- Router: the rate-limit reply and the fallback error are embeds (the Spanish "Error ejecutando comando" text is gone); `/sync_slash_guild` replies in English embeds.
+- `visibility` is optional (default private) on `/wallet_balance` and `/bank_balance`; command and option descriptions were capitalized and reworded.
+- `/ping` defers instead of sending a placeholder text message.
+
+### 🐛 Logic bugs fixed
+- `/bank_balance` read the economy symbol before deferring, so a slow query could expire the interaction.
+- Typos in user-facing text ("successfully deposit", "dont", "comand").
+
+### 🧪 Tests
+- `ui-format.test.ts`: money/duration/timestamp formatting, tone color, footer and hint, ephemeral errors, private follow-up after a public defer.
+- `deposit-withdraw.test.ts` updated for the new titles.
+
 ## [2.0.0] - 2026-10-05
 Public release preparation: global commands, Docker, migrations, advanced economy.
 
