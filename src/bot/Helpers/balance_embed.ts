@@ -1,19 +1,19 @@
-import { ChatInputCommandInteraction } from "discord.js";
-
 import { getBalance } from "../services/database/repository/clients/manager";
 import { getEcoSymbol } from "../services/database/repository/servers/get_eco_symbol";
 import { sendSimpleEmbed } from "./simplified_embed_builder";
 import { Emoji } from "../ui/theme";
+import { cmd } from "../framework/context";
+import type { CommandContext } from "../framework/types";
 import { headline, money, moneyText } from "../ui/format";
 
-//? Shared by /wallet_balance and /bank_balance: the requested balance is the
+//? Shared by wallet_balance and bank_balance: the requested balance is the
 //? headline, the other one and the total are shown below it
 export async function sendBalanceEmbed(
-    interaction: ChatInputCommandInteraction,
+    ctx: CommandContext,
     focus: "wallet" | "bank",
 ): Promise<void> {
-    const guildId = interaction.guild!.id;
-    const userId = interaction.user.id;
+    const guildId = ctx.guildId;
+    const userId = ctx.user.id;
     const [symbol, wallet, bank] = await Promise.all([
         getEcoSymbol(guildId),
         getBalance(userId, guildId, "wallet"),
@@ -25,8 +25,8 @@ export async function sendBalanceEmbed(
             ? { name: `${Emoji.bank} Bank`, value: money(symbol, bank) }
             : { name: `${Emoji.wallet} Wallet`, value: money(symbol, wallet) };
 
-    await sendSimpleEmbed(interaction, {
-        author: interaction.user,
+    await sendSimpleEmbed(ctx, {
+        author: ctx.user,
         title:
             focus === "wallet"
                 ? `${Emoji.wallet} Wallet balance`
@@ -42,7 +42,7 @@ export async function sendBalanceEmbed(
         ],
         hint:
             focus === "wallet"
-                ? "Keep money safe and earning interest with `/deposit`."
-                : "Bank money earns daily interest. See `/economy_info`.",
+                ? `Keep money safe and earning interest with ${cmd(ctx, "deposit")}.`
+                : `Bank money earns daily interest. See ${cmd(ctx, "economy_info")}.`,
     });
 }

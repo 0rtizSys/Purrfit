@@ -1,4 +1,4 @@
-import { collectHeartbeat } from "../services/heartbeat";
+import { collectHeartbeat, heartbeatLogMeta } from "../services/heartbeat";
 
 function fakeClient(opts: {
     ready: boolean;
@@ -46,5 +46,38 @@ describe("collectHeartbeat", () => {
         expect(row.pingMs).toBeNull();
         expect(row.discordReady).toBe(false);
         expect(row.guilds).toBe(0);
+    });
+});
+
+describe("heartbeatLogMeta", () => {
+    it("exposes the numbers under the names the monitor reads", () => {
+        expect(
+            heartbeatLogMeta({
+                status: "running",
+                discordReady: true,
+                pingMs: 42,
+                guilds: 3,
+                users: 15,
+                rssMb: 200,
+            }),
+        ).toEqual({
+            wsPing: 42,
+            discordReady: true,
+            guilds: 3,
+            users: 15,
+            rssMb: 200,
+        });
+    });
+
+    it("keeps a missing ping as null so the monitor ignores it", () => {
+        const meta = heartbeatLogMeta({
+            status: "starting",
+            discordReady: false,
+            pingMs: null,
+            guilds: 0,
+            users: 0,
+            rssMb: 90,
+        });
+        expect(meta.wsPing).toBeNull();
     });
 });

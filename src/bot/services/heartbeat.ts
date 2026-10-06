@@ -41,6 +41,20 @@ export function collectHeartbeat(
     };
 }
 
+/**
+ * The fields of the optional `heartbeat` log line (see `HEARTBEAT_LOG`).
+ * `wsPing` is the name the local monitor (monitor/) already looks for.
+ */
+export function heartbeatLogMeta(row: HeartbeatRow): Record<string, unknown> {
+    return {
+        wsPing: row.pingMs,
+        discordReady: row.discordReady,
+        guilds: row.guilds,
+        users: row.users,
+        rssMb: row.rssMb,
+    };
+}
+
 function readVersion(): string | null {
     try {
         //? Same depth from src/ (tsx) and dist/ (compiled)
@@ -98,6 +112,12 @@ export class Heartbeat {
 
     private async beat(): Promise<void> {
         const row = collectHeartbeat(this.client, this.status);
+        //? Off by default (two lines a minute are noise on a host). The local
+        //? monitor turns it on to chart the gateway ping; it works even when
+        //? the database below is down.
+        if (process.env.HEARTBEAT_LOG === "true") {
+            logger.info("heartbeat", heartbeatLogMeta(row));
+        }
         try {
             await pool.query(
                 `INSERT INTO bot_heartbeat

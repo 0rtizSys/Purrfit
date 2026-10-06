@@ -1,4 +1,5 @@
-import { ChatInputCommandInteraction, User } from "discord.js";
+import type { User } from "discord.js";
+import type { Replier } from "../framework/types";
 import {
     amountErrorEmbed,
     botTargetEmbed,
@@ -22,36 +23,32 @@ const UntrustedData = z.object({
 //? ---------------------
 
 export async function isInvalidAmount(
-    interaction: ChatInputCommandInteraction,
+    replier: Replier,
     amount: number,
 ): Promise<boolean> {
     if (!validateAmount(amount)) {
-        await amountErrorEmbed(interaction);
+        await amountErrorEmbed(replier);
         return true;
     }
     return false;
 }
 
 export async function isSelfTransfer(
-    interaction: ChatInputCommandInteraction,
+    replier: Replier,
     userId: string,
     targetId: string,
 ) {
     if (userId === targetId) {
-        await SameUserEmbed(interaction);
+        await SameUserEmbed(replier);
         return true;
     }
     return false;
 }
 
-export async function isBotAction(
-    interaction: ChatInputCommandInteraction,
-    target: User,
-) {
-    //? The user is already resolved in the interaction payload,
-    //? no extra Discord API request is needed.
+export async function isBotAction(replier: Replier, target: User) {
+    //? The argument parser already resolved the user: no extra request needed.
     if (target.bot) {
-        await botTargetEmbed(interaction);
+        await botTargetEmbed(replier);
         return true;
     }
     return false;

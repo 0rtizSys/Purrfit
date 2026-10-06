@@ -1,25 +1,9 @@
-import { ChatInputCommandInteraction, MessageFlags } from "discord.js";
 import { depositCommand } from "../commands/economy/public/deposit";
 import { withdrawCommand } from "../commands/economy/public/withdraw";
-import { requireGuild } from "../Helpers/require_guild";
-import { isInvalidAmount } from "../Helpers/validators";
 import { getEcoSymbol } from "../services/database/repository/servers/get_eco_symbol";
 import { transferInternalSafe } from "../services/database/repository/clients/withdraw-transfer";
-import { Emoji } from "../ui/theme";
-import {
-    InsuficientsFundsEmbed,
-    sendSimpleEmbed,
-} from "../Helpers/simplified_embed_builder";
-
-jest.mock("../Helpers/require_guild", () => ({
-    requireGuild: jest.fn(),
-}));
-
-jest.mock("../Helpers/validators", () => ({
-    isInvalidAmount: jest.fn(),
-    MIN_AMOUNT: 1,
-    MAX_AMOUNT: 1_000_000_000,
-}));
+import { usageOf } from "../framework/args";
+import { fakeCtx } from "./helpers/fake_context";
 
 jest.mock("../services/database/repository/servers/get_eco_symbol", () => ({
     getEcoSymbol: jest.fn(),
@@ -29,145 +13,119 @@ jest.mock("../services/database/repository/clients/withdraw-transfer", () => ({
     transferInternalSafe: jest.fn(),
 }));
 
-jest.mock("../Helpers/simplified_embed_builder", () => ({
-    internalErrorEmbed: jest.fn(),
-    sendSimpleEmbed: jest.fn(),
-    InsuficientsFundsEmbed: jest.fn(),
-}));
-
-const requireGuildMock = jest.mocked(requireGuild);
-const isInvalidAmountMock = jest.mocked(isInvalidAmount);
 const getEcoSymbolMock = jest.mocked(getEcoSymbol);
-const transferInternalSafeMock = jest.mocked(transferInternalSafe);
-const sendSimpleEmbedMock = jest.mocked(sendSimpleEmbed);
-const insufficientFundsMock = jest.mocked(InsuficientsFundsEmbed);
-
-function createInteraction(amount = 250, visibility = false) {
-    return {
-        inGuild: jest.fn().mockReturnValue(true),
-        guild: { id: "guild-1" },
-        user: {
-            id: "user-1",
-            toString: () => "<@user-1>",
-        },
-        options: {
-            getBoolean: jest.fn().mockReturnValue(visibility),
-            getInteger: jest.fn().mockReturnValue(amount),
-        },
-        deferReply: jest.fn().mockResolvedValue(undefined),
-        deferred: true,
-        replied: false,
-    } as unknown as ChatInputCommandInteraction & {
-        deferReply: jest.Mock;
-    };
-}
+const transferMock = jest.mocked(transferInternalSafe);
 
 beforeEach(() => {
     jest.clearAllMocks();
-    requireGuildMock.mockResolvedValue(true);
-    isInvalidAmountMock.mockResolvedValue(false);
     getEcoSymbolMock.mockResolvedValue("$");
-    transferInternalSafeMock.mockResolvedValue({ ok: true });
-    sendSimpleEmbedMock.mockResolvedValue(undefined);
-    insufficientFundsMock.mockResolvedValue(undefined);
+    transferMock.mockResolvedValue({ ok: true } as never);
 });
 
 describe("depositCommand", () => {
-    it("moves money from wallet to bank and sends success when transaction succeeds", async () => {
-        const interaction = createInteraction(250, false);
+    it("declares its contract", () => {
+        expect(usageOf(depositCommand)).toBe("deposit <amount>");
+        expect(depositCommand.aliases).toEqual(["dep", "d"]);
+    });
 
-        await depositCommand.execute(interaction);
+    it("moves money from wallet to bank and replies publicly", async () => {
+        const { ctx, replies } = fakeCtx({ args: { amount: 250 } });
 
-        expect(interaction.deferReply).toHaveBeenCalledWith({
-            flags: MessageFlags.Ephemeral,
-        });
-        expect(transferInternalSafeMock).toHaveBeenCalledWith(
+        await depositCommand.execute!(ctx);
+
+        expect(ctx.defer).toHaveBeenCalled();
+        expect(transferMock).toHaveBeenCalledWith(
             "user-1",
             "guild-1",
             250,
             "wallet",
             "bank",
         );
-        expect(sendSimpleEmbedMock).toHaveBeenCalledWith(
-            interaction,
-            expect.objectContaining({
-                title: `${Emoji.bank} Deposit complete`,
-            }),
-        );
+        const [reply] = replies();
+        expect(reply.embed.title).toContain("Deposit complete");
+        expect(reply.embed.description).toContain("250");
+        expect(reply.temporary).toBe(false);
     });
 
-    it("shows insufficient funds using the balance read under the row lock", async () => {
-        const interaction = createInteraction(250, false);
-        transferInternalSafeMock.mockResolvedValue({
+    it("shows insufficient funds (temporary) with the server prefix", async () => {
+        transferMock.mockResolvedValue({
             ok: false,
             reason: "insufficient_funds",
             currentBalance: 100,
+        } as never);
+        const { ctx, replies } = fakeCtx({
+            args: { amount: 250 },
+            prefix: "p!",
         });
 
-        await depositCommand.execute(interaction);
+        await depositCommand.execute!(ctx);
 
-        expect(insufficientFundsMock).toHaveBeenCalledWith(
-            interaction,
-            100,
-            250,
-            "$",
-            "deposit",
-        );
-        expect(sendSimpleEmbedMock).not.toHaveBeenCalled();
+        const all = replies();
+        expect(all).toHaveLength(1);
+        expect(all[0].embed.title).toContain("Not enough money");
+        expect(all[0].embed.description).toContain("deposit");
+        expect(all[0].embed.description).toContain("150");
+        expect(all[0].temporary).toBe(true);
     });
 
-    it("does not touch the database when the amount is invalid", async () => {
-        const interaction = createInteraction(0, false);
-        isInvalidAmountMock.mockResolvedValue(true);
+    it.each([0, -5, 1_000_000_001, 1.5])(
+        "writes nothing when the amount %s is invalid",
+        async (amount) => {
+            const { ctx, replies } = fakeCtx({ args: { amount } });
 
-        await depositCommand.execute(interaction);
+            await depositCommand.execute!(ctx);
 
-        expect(interaction.deferReply).not.toHaveBeenCalled();
-        expect(transferInternalSafeMock).not.toHaveBeenCalled();
-    });
+            expect(transferMock).not.toHaveBeenCalled();
+            expect(replies()).toHaveLength(1);
+            expect(replies()[0].temporary).toBe(true);
+        },
+    );
 });
 
 describe("withdrawCommand", () => {
-    it("moves money from bank to wallet and sends success when transaction succeeds", async () => {
-        const interaction = createInteraction(400, true);
+    it("declares its contract", () => {
+        expect(usageOf(withdrawCommand)).toBe("withdraw <amount>");
+        expect(withdrawCommand.aliases).toEqual(["with", "wd"]);
+    });
 
-        await withdrawCommand.execute(interaction);
+    it("moves money from bank to wallet and replies publicly", async () => {
+        const { ctx, replies } = fakeCtx({ args: { amount: 400 } });
 
-        expect(interaction.deferReply).toHaveBeenCalledWith({
-            flags: undefined,
-        });
-        expect(transferInternalSafeMock).toHaveBeenCalledWith(
+        await withdrawCommand.execute!(ctx);
+
+        expect(transferMock).toHaveBeenCalledWith(
             "user-1",
             "guild-1",
             400,
             "bank",
             "wallet",
         );
-        expect(sendSimpleEmbedMock).toHaveBeenCalledWith(
-            interaction,
-            expect.objectContaining({
-                title: `${Emoji.wallet} Withdrawal complete`,
-            }),
-        );
+        const [reply] = replies();
+        expect(reply.embed.title).toContain("Withdrawal complete");
+        expect(reply.temporary).toBe(false);
     });
 
-    it("shows insufficient funds instead of success when the bank cannot cover it", async () => {
-        const interaction = createInteraction(400, true);
-        transferInternalSafeMock.mockResolvedValue({
+    it("shows insufficient funds instead of success", async () => {
+        transferMock.mockResolvedValue({
             ok: false,
             reason: "insufficient_funds",
             currentBalance: 0,
-        });
+        } as never);
+        const { ctx, replies } = fakeCtx({ args: { amount: 400 } });
 
-        await withdrawCommand.execute(interaction);
+        await withdrawCommand.execute!(ctx);
 
-        expect(insufficientFundsMock).toHaveBeenCalledWith(
-            interaction,
-            0,
-            400,
-            "$",
-            "withdraw",
-        );
-        expect(sendSimpleEmbedMock).not.toHaveBeenCalled();
+        expect(replies()).toHaveLength(1);
+        expect(replies()[0].embed.title).toContain("Not enough money");
+        expect(replies()[0].temporary).toBe(true);
+    });
+
+    it("writes nothing when the amount is invalid", async () => {
+        const { ctx, replies } = fakeCtx({ args: { amount: 0 } });
+
+        await withdrawCommand.execute!(ctx);
+
+        expect(transferMock).not.toHaveBeenCalled();
+        expect(replies()[0].temporary).toBe(true);
     });
 });

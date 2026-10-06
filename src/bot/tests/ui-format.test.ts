@@ -1,4 +1,5 @@
-import { EmbedBuilder, MessageFlags } from "discord.js";
+import type { EmbedBuilder } from "discord.js";
+import type { Replier } from "../framework/types";
 import {
     formatDuration,
     money,
@@ -36,27 +37,17 @@ describe("ui/format", () => {
     });
 });
 
-function fakeInteraction(state: {
-    deferred?: boolean;
-    replied?: boolean;
-    ephemeral?: boolean | null;
-}) {
+function fakeReplier() {
     return {
-        deferred: false,
-        replied: false,
-        ephemeral: null,
-        ...state,
         client: { user: { displayAvatarURL: () => "https://bot/avatar.png" } },
-        reply: jest.fn(),
-        editReply: jest.fn(),
-        deleteReply: jest.fn(),
-        followUp: jest.fn(),
-    } as unknown as Parameters<typeof sendSimpleEmbed>[0];
+        prefix: "$>",
+        send: jest.fn().mockResolvedValue(undefined),
+    } as unknown as Replier & { send: jest.Mock };
 }
 
 describe("embed builder", () => {
     it("colors by tone, adds the footer and the hint line", () => {
-        const embed = buildEmbed(fakeInteraction({}), {
+        const embed = buildEmbed(fakeReplier(), {
             title: "Title",
             description: "Body",
             hint: "Do this",
@@ -67,37 +58,38 @@ describe("embed builder", () => {
         expect(embed.footer?.text).toBe("Purrfit");
     });
 
-    it("errors have no footer and are ephemeral", async () => {
-        const interaction = fakeInteraction({});
-        await sendSimpleEmbed(interaction, { title: "x", tone: "error" });
-        const call = jest.mocked(interaction.reply).mock.calls[0][0] as {
-            embeds: EmbedBuilder[];
-            flags: number;
-        };
-        expect(call.flags).toBe(MessageFlags.Ephemeral);
-        expect(call.embeds[0].toJSON().footer).toBeUndefined();
+    it("errors have no footer and are temporary", async () => {
+        const replier = fakeReplier();
+        await sendSimpleEmbed(replier, { title: "x", tone: "error" });
+        const [payload, options] = replier.send.mock.calls[0] as [
+            { embeds: EmbedBuilder[] },
+            { temporary: boolean },
+        ];
+        expect(options.temporary).toBe(true);
+        expect(payload.embeds[0].toJSON().footer).toBeUndefined();
     });
 
-    it("moves an error after a public defer into a private follow-up", async () => {
-        const interaction = fakeInteraction({
-            deferred: true,
-            ephemeral: false,
+    it("cooldown notices and `eph` replies are temporary too", async () => {
+        const replier = fakeReplier();
+        await sendSimpleEmbed(replier, { title: "x", tone: "cooldown" });
+        await sendSimpleEmbed(replier, { title: "x", eph: true });
+        expect(replier.send.mock.calls.map((c) => c[1].temporary)).toEqual([
+            true,
+            true,
+        ]);
+    });
+
+    it("normal replies stay in the channel and carry files and buttons", async () => {
+        const replier = fakeReplier();
+        await sendSimpleEmbed(replier, {
+            title: "x",
+            files: [],
+            components: [],
         });
-        await sendSimpleEmbed(interaction, { title: "x", tone: "error" });
-        expect(interaction.deleteReply).toHaveBeenCalled();
-        expect(interaction.followUp).toHaveBeenCalledWith(
-            expect.objectContaining({ flags: MessageFlags.Ephemeral }),
+        const [payload, options] = replier.send.mock.calls[0];
+        expect(options.temporary).toBe(false);
+        expect(payload).toEqual(
+            expect.objectContaining({ files: [], components: [] }),
         );
-        expect(interaction.editReply).not.toHaveBeenCalled();
-    });
-
-    it("edits a private deferred reply in place", async () => {
-        const interaction = fakeInteraction({
-            deferred: true,
-            ephemeral: true,
-        });
-        await sendSimpleEmbed(interaction, { title: "x", tone: "error" });
-        expect(interaction.editReply).toHaveBeenCalled();
-        expect(interaction.deleteReply).not.toHaveBeenCalled();
     });
 });

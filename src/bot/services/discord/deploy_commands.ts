@@ -1,38 +1,42 @@
 import { REST, Routes } from "discord.js";
 
-export type DeploySummary = { global: number; guild: number };
+export type DeploySummary = {
+    /** Slash commands published globally. */
+    global: number;
+    /** True when GUILD_ID was set and its old slash commands were removed. */
+    guildCleared: boolean;
+};
 
 /**
- * Publishes the slash commands:
- *  - public commands globally, so they work in every server that adds Purrfit,
- *  - developer commands only in GUILD_ID (your own server).
+ * Publishes the slash commands (/help, /dashboard, /support) globally, so they
+ * work in every server that adds Purrfit. Every other command is typed in
+ * chat with the server's prefix and needs no deployment.
  *
- * Overwriting the guild list also removes old guild copies of the public
- * commands, which would otherwise show up twice in that server.
+ * With GUILD_ID set it also empties that server's slash list: before v3.0.0
+ * the developer commands (and old copies of the public ones) lived there and
+ * would otherwise keep showing up, doing nothing.
  */
 export async function deployCommands(env: {
     token: string;
     clientId: string;
     guildId?: string;
 }): Promise<DeploySummary> {
-    const { publicCmds, devCmds } = await import("../../syncer");
+    const { slashCmds } = await import("../../syncer");
     const rest = new REST({ version: "10" }).setToken(env.token);
 
-    const globalPayload = publicCmds.map((c) => c.data.toJSON());
+    //? PUT replaces the whole list, which also removes every command of v2
+    const globalPayload = slashCmds.map((c) => c.data.toJSON());
     await rest.put(Routes.applicationCommands(env.clientId), {
         body: globalPayload,
     });
 
-    let guildCount = 0;
     if (env.guildId) {
-        const guildPayload = devCmds.map((c) => c.data.toJSON());
         await rest.put(
             Routes.applicationGuildCommands(env.clientId, env.guildId),
-            { body: guildPayload },
+            { body: [] },
         );
-        guildCount = guildPayload.length;
     }
-    return { global: globalPayload.length, guild: guildCount };
+    return { global: globalPayload.length, guildCleared: Boolean(env.guildId) };
 }
 
 export function readDeployEnv() {

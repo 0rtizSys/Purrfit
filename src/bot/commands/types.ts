@@ -1,5 +1,7 @@
 import {
+    ActionRowBuilder,
     AttachmentBuilder,
+    ButtonBuilder,
     SlashCommandBuilder,
     SlashCommandOptionsOnlyBuilder,
     SlashCommandSubcommandsOnlyBuilder,
@@ -9,6 +11,8 @@ import {
 
 import { EmbedTone } from "../ui/theme";
 
+//? Slash commands. Only /help, /dashboard and /support still are; every other
+//? command is a prefix command (see framework/types.ts).
 export type Command = {
     data:
         | SlashCommandBuilder
@@ -16,14 +20,12 @@ export type Command = {
         | SlashCommandSubcommandsOnlyBuilder;
     execute: (interaction: ChatInputCommandInteraction) => Promise<void>;
 };
-export type Embeds = {
-    interaction: ChatInputCommandInteraction;
-};
 export type SimpleEmbedOptions = {
     title?: string;
     description?: string;
     //? Color + meaning of the embed (default "brand"); "error" is always ephemeral
     tone?: EmbedTone;
+    //? Temporary: ephemeral on a slash command, deleted a few seconds later in chat
     eph?: boolean;
     fields?: { name: string; value: string; inline?: boolean }[];
     //? Shows the user's name and avatar at the top
@@ -37,4 +39,6 @@ export type SimpleEmbedOptions = {
     files?: AttachmentBuilder[];
     //? Overrides the tone color (e.g. green/red chart trend)
     color?: number;
+    //? Link buttons and the like
+    components?: ActionRowBuilder<ButtonBuilder>[];
 };

@@ -6,7 +6,7 @@ import {
     Interaction,
 } from "discord.js";
 import * as dotenv from "dotenv";
-import { cmds } from "./syncer";
+import { registry, slashCmds } from "./syncer";
 import { logger } from "./services/logger";
 import { RateLimiter } from "./services/rate_limit";
 import { Scheduler } from "./services/jobs/scheduler";
@@ -18,12 +18,28 @@ import {
 } from "./Helpers/simplified_embed_builder";
 import { Emoji } from "./ui/theme";
 import { relativeTime } from "./ui/format";
+import { handleMessage } from "./framework/dispatcher";
+import { slashReplier } from "./framework/context";
+import { DEFAULT_PREFIX } from "./framework/prefix";
+import { getPrefix } from "./services/database/repository/servers/prefix";
+import {
+    recordGuild,
+    recordGuildLeft,
+    syncGuilds,
+} from "./services/database/repository/servers/bot_guilds";
 
 dotenv.config({ quiet: true });
 
-//? Slash commands only need the Guilds intent (no message content)
+//? Commands are typed in chat (`$>work`), so the bot reads message text.
+//? MessageContent is a privileged intent: enable it in the Developer Portal
+//? (Bot > Privileged Gateway Intents). Only messages that start with the
+//? server's prefix are looked at, and their text is never stored.
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds],
+    intents: [
+        GatewayIntentBits.Guilds,
+        GatewayIntentBits.GuildMessages,
+        GatewayIntentBits.MessageContent,
+    ],
 });
 
 const rateLimiter = new RateLimiter();
@@ -45,50 +61,70 @@ client.once(Events.ClientReady, (ready) => {
         status: "online",
     });
 
+    //? The web dashboard reads this list to know where Purrfit is
+    void syncGuilds(ready.guilds.cache.values());
+
     if (process.env.DISABLE_JOBS !== "true") scheduler.start();
     heartbeat.markRunning();
 });
 
 client.on(Events.GuildCreate, (guild) => {
     heartbeat.noteEvent("guild_join");
+    void recordGuild(guild);
     logger.info("Agregado a un servidor", {
         guildId: guild.id,
         members: guild.memberCount,
     });
 });
 
+client.on(Events.GuildUpdate, (_before, guild) => {
+    void recordGuild(guild);
+});
+
 client.on(Events.GuildDelete, (guild) => {
     heartbeat.noteEvent("guild_leave");
+    void recordGuildLeft(guild.id);
     logger.info("Eliminado de un servidor", { guildId: guild.id });
 });
 
+client.on(Events.MessageCreate, (message) => {
+    void handleMessage(message, {
+        registry,
+        getPrefix,
+        rateLimiter,
+        ownerId: process.env.OWNER_ID,
+        onCommand: () => heartbeat.noteEvent("command"),
+    });
+});
+
+//? Only /help, /dashboard and /support are slash commands
 client.on(Events.InteractionCreate, async (interaction: Interaction) => {
     if (!interaction.isChatInputCommand()) return;
-    const command = cmds.find(
-        (cmd) => cmd.data!.name === interaction.commandName,
+    const command = slashCmds.find(
+        (cmd) => cmd.data.name === interaction.commandName,
     );
     if (!command) {
         logger.warn(`Comando no encontrado: ${interaction.commandName}`);
         return;
     }
 
+    const replier = slashReplier(interaction, DEFAULT_PREFIX);
     const limit = rateLimiter.check(
         interaction.user.id,
         interaction.commandName,
     );
     if (!limit.allowed) {
-        await sendSimpleEmbed(interaction, {
+        await sendSimpleEmbed(replier, {
             title: `${Emoji.cooldown} Slow down`,
             description: `You're using commands too fast. Try again ${relativeTime(Date.now() + limit.retryAfterMs)}.`,
             tone: "cooldown",
-            eph: true,
         }).catch(() => undefined);
         return;
     }
 
     heartbeat.noteEvent("command");
     try {
-        await command.execute!(interaction);
+        await command.execute(interaction);
     } catch (error) {
         logger.error(`Error ejecutando /${interaction.commandName}`, {
             error,
@@ -97,7 +133,7 @@ client.on(Events.InteractionCreate, async (interaction: Interaction) => {
         //? The error reply itself can fail (expired or already answered
         //? interaction); that must never escape this handler
         try {
-            await internalErrorEmbed(interaction);
+            await internalErrorEmbed(replier);
         } catch (replyError) {
             logger.warn("No se pudo responder al error", { error: replyError });
         }

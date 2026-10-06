@@ -1,23 +1,19 @@
-import { SlashCommandBuilder, ChatInputCommandInteraction } from "discord.js";
-
 import { sendSimpleEmbed } from "../../Helpers/simplified_embed_builder";
-import { Command } from "../types";
+import type { PrefixCommand } from "../../framework/types";
 
-export const pingSlash: Command = {
-    data: new SlashCommandBuilder()
-        .setName("ping")
-        .setDescription("Check the bot latency"),
+export const pingCommand: PrefixCommand = {
+    name: "ping",
+    description: "Check the bot latency",
 
-    async execute(interaction: ChatInputCommandInteraction) {
-        await interaction.deferReply();
-        const sent = await interaction.fetchReply();
-        const ping = sent.createdTimestamp - interaction.createdTimestamp;
-        const api = interaction.client.ws.ping;
+    async execute(ctx) {
+        //? How long the bot took to see the message (Discord's clock vs ours)
+        const bot = Math.max(Date.now() - ctx.message.createdTimestamp, 0);
+        const api = ctx.client.ws.ping;
 
-        await sendSimpleEmbed(interaction, {
+        await sendSimpleEmbed(ctx, {
             title: "🏓 Pong!",
             fields: [
-                { name: "📶 Bot", value: `\`${ping}ms\``, inline: true },
+                { name: "📶 Bot", value: `\`${bot}ms\``, inline: true },
                 //? ws.ping is -1 until the first heartbeat after login
                 {
                     name: "🛜 Discord API",

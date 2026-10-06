@@ -1,6 +1,6 @@
 {
   "name": "purrfit",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "description": "Purrfit, a Discord economy bot",
   "license": "ISC",
   "author": "me",
@@ -15,6 +15,7 @@
     "init": "node dist/bot/index.js",
     "migrate": "node dist/scripts/migrate.js",
     "deploy-commands": "node dist/scripts/deploy_commands.js",
+    "export-commands": "node dist/scripts/export_commands.js",
     "test": "jest",
     "test:integration": "jest src/bot/tests/integration",
     "lint": "eslint src",

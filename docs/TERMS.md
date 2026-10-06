@@ -1,12 +1,12 @@
 # Purrfit Terms of Service
 
-_Version: 2.0 · Last updated: 2026-10-05_
+_Version: 3.0 · Last updated: 2026-10-06_
 
 By adding Purrfit to a server, using its commands or signing in to its website, you agree to these terms.
 
 ## 1. The service
 
-Purrfit is a Discord bot that provides a simulated economy: work rewards, wallets and banks, interest, taxes, simulated cryptocurrencies and games of chance with fictional money. It also has a website where you can sign in with Discord and see the status of the bot.
+Purrfit is a Discord bot that provides a simulated economy: work rewards, wallets and banks, interest, taxes, simulated cryptocurrencies and games of chance with fictional money. Its commands are typed in chat with a prefix (by default `$>`, changeable per server). It also has a website where you can sign in with Discord, manage the settings of the servers you administer, see the list of commands and follow the simulated crypto market.
 
 ## 2. No real value
 
@@ -25,7 +25,7 @@ Please report bugs through the support server instead of exploiting them. Balanc
 
 ## 4. Server administrators
 
-Admins can change their server's economy settings and add balance. Each server's economy is independent, and the bot owner is not responsible for how admins manage it.
+Admins can change their server's prefix and economy settings and add balance, with commands or from the website dashboard (only for servers where they are the owner or have the Administrator permission). Each server's economy is independent, and the bot owner is not responsible for how admins manage it.
 
 ## 5. The website and your account
 
@@ -50,4 +50,4 @@ These terms may be updated. The version and the date at the top show the latest 
 
 ## 9. Contact
 
-Use the support server linked in `/help` and on the website.
+Use the support server (`/support`, or the link in `/help` and on the website).

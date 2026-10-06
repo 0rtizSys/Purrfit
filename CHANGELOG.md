@@ -1,7 +1,23 @@
 # Changelog
 
 ## [Unreleased]
-Website frontend, bot heartbeat and versioned legal documents. The website's server is a separate, private project.
+**3.0.0: prefix commands and the web dashboard.** Every command is now typed in chat with a per-server prefix (default `$>`); only `/help`, `/dashboard` and `/support` stay as slash commands. Also: website frontend, bot heartbeat and versioned legal documents. The website's server is a separate, private project.
+
+### ⚠️ Breaking
+- **Slash commands are gone** except `/help`, `/dashboard` and `/support`. Type `$>work`, `$>deposit 500`, `$>crypto buy PURR 1k`... (with the server's prefix). Run `npm run deploy-commands` once to remove the old slash commands from Discord.
+- **The bot needs the Message Content intent** (Developer Portal > Bot > Privileged Gateway Intents). A bot in 100+ servers needs Discord's approval for it.
+- The `visibility` option is removed: results are public, and errors and cooldown notices are answered in the channel and deleted a few seconds later (chat has no ephemeral replies).
+- `/delete_my_data confirm:True` is now `$>delete_my_data confirm`.
+- The developer command `/sync_slash_guild` is now `$>sync` (owner only) and `GUILD_ID` is only used to clear old slash commands.
+- Migrations `004_server_prefix.sql` and `005_bot_guilds.sql` (applied automatically on start).
+- Terms of Service and Privacy Policy 3.0: they say the bot reads message text to detect the prefix (nothing is stored), and that the website now asks Discord for the `guilds` scope and stores the servers a user administers. Every user is asked to accept them again.
+
+### ✨ Added (3.0.0)
+- `src/bot/framework/`: the prefix command engine (dispatcher, typed argument parser with `1k`/`2.5m` amounts and mentions, registry that fails at startup on name clashes, owner/admin permissions, per-server prefix, temporary replies, mention-for-prefix) with its own README and ~100 tests.
+- Short **aliases** for the common commands (`$>w`, `$>bal`, `$>dep`, `$>lb`, `$>cf`, `$>c b`...).
+- `$>prefix [new_prefix]`: see or change (admins) the server prefix; `/dashboard` and `/support` link commands.
+- `bot_guilds` table kept by the bot, `npm run export-commands` and `COMMANDS_MANIFEST_PATH` for the dashboard.
+- Web dashboard: server selection and settings, command reference with each server's prefix, and candlestick charts of the crypto market.
 
 ### ✨ Added
 - `src/web/`: public frontend in vanilla HTML/CSS/JS (gold, money green and black, official PFP in `assets/images/purrfit_pfp.jpg`): landing page (presentation, filterable commands, invite steps, contact), **login page** ("Continue with Discord" plus terms/privacy acceptance), **dashboard** (bot status, account, session and account-deletion actions) and legal pages that render `docs/*.md`. Custom inline SVG icons; animations respect `prefers-reduced-motion`. No inline scripts or styles, no `localStorage`/`sessionStorage`: it works under a strict Content-Security-Policy and keeps all security decisions on the server.
@@ -9,6 +25,7 @@ Website frontend, bot heartbeat and versioned legal documents. The website's ser
 - `src/shared/`: `market_worker.ts` (`npm run worker:market`, `worker:market:dev`) publishes the simulated prices to `data/market.json` every 2 minutes using `listMarket()`; `market_snapshot.ts` with tests.
 - `src/shared/tests/frontend-boundary.test.ts`: fails if server code, secrets, SQL, source maps, inline scripts or browser-side session storage appear in `src/web/`.
 - Unit tests for the heartbeat.
+- `HEARTBEAT_LOG=true` (off by default): the heartbeat also prints a `heartbeat` log line (gateway ping, guilds, users, memory) every 30 s. The local monitor turns it on to chart those numbers.
 
 ### ♻ changes
 - **Terms of Service and Privacy Policy 2.0**: now cover the website (Discord sign-in with the `identify` scope only, session and sign-in cookies, stored data, logs, retention, third parties, deleting the web account) and carry a `_Version:` line that the website backend records as the version a user accepted.

@@ -1,18 +1,10 @@
-import {
-    ChatInputCommandInteraction,
-    MessageFlags,
-    SlashCommandBuilder,
-} from "discord.js";
-
-import { Command } from "../types";
-import { requireGuild } from "../../Helpers/require_guild";
+import type { PrefixCommand } from "../../framework/types";
 import {
     isInvalidAmount,
     MAX_AMOUNT,
     MIN_AMOUNT,
 } from "../../Helpers/validators";
 import {
-    internalErrorEmbed,
     InsuficientsFundsEmbed,
     sendErrorEmbed,
     sendSimpleEmbed,
@@ -24,7 +16,6 @@ import {
     isCoinSide,
     settleCoinFlip,
 } from "../../services/games/coin_flip";
-import { logger } from "../../services/logger";
 import { Emoji, toneColor } from "../../ui/theme";
 import { headline, money, moneyChange, moneyText } from "../../ui/format";
 
@@ -34,111 +25,93 @@ function formatSide(side: CoinSide): string {
     return side === "heads" ? "Heads" : "Tails";
 }
 
-export const coinFlipCommand: Command = {
-    data: new SlashCommandBuilder()
-        .setName("coinflip")
-        .setDescription("Bet wallet money by flipping a coin")
-        .addStringOption((opt) =>
-            opt
-                .setName("choice")
-                .setDescription("Choose one side of the coin")
-                .setRequired(true)
-                .addChoices(
-                    { name: "Heads", value: "heads" },
-                    { name: "Tails", value: "tails" },
-                ),
-        )
-        .addIntegerOption((opt) =>
-            opt
-                .setName("amount")
-                .setDescription(
-                    `Amount to bet from your wallet (default ${DEFAULT_BET})`,
-                )
-                .setMinValue(MIN_AMOUNT)
-                .setMaxValue(MAX_AMOUNT),
-        )
-        .addBooleanOption((opt) =>
-            opt
-                .setName("visibility")
-                .setDescription("Other people can see your flip"),
-        ),
+export const coinFlipCommand: PrefixCommand = {
+    name: "coinflip",
+    aliases: ["cf", "flip"],
+    description: "Bet wallet money by flipping a coin",
+    args: [
+        {
+            name: "choice",
+            kind: "choice",
+            choices: ["heads", "tails"],
+            description: "Choose one side of the coin",
+        },
+        {
+            name: "amount",
+            kind: "amount",
+            optional: true,
+            description: `Amount to bet from your wallet (default ${DEFAULT_BET})`,
+            min: MIN_AMOUNT,
+            max: MAX_AMOUNT,
+        },
+    ],
 
-    async execute(interaction: ChatInputCommandInteraction) {
-        if (!(await requireGuild(interaction))) return;
-
-        const guildId = interaction.guild!.id;
-        const userId = interaction.user.id;
-        const choiceOption = interaction.options.getString("choice", true);
-        const amount = interaction.options.getInteger("amount") ?? DEFAULT_BET;
-        const isPublic = interaction.options.getBoolean("visibility") ?? false;
+    async execute(ctx) {
+        const guildId = ctx.guildId;
+        const userId = ctx.user.id;
+        const choiceOption = ctx.args.string("choice");
+        const amount = ctx.args.integerOpt("amount") ?? DEFAULT_BET;
 
         if (!isCoinSide(choiceOption)) {
             await sendErrorEmbed(
-                interaction,
+                ctx,
                 "Invalid coin side",
                 "Choose `Heads` or `Tails` to play coinflip.",
             );
             return;
         }
 
-        if (await isInvalidAmount(interaction, amount)) return;
+        if (await isInvalidAmount(ctx, amount)) return;
 
-        await interaction.deferReply({
-            flags: !isPublic ? MessageFlags.Ephemeral : undefined,
-        });
+        await ctx.defer();
 
-        try {
-            const symbol = await getEcoSymbol(guildId);
-            const outcome = settleCoinFlip(choiceOption, amount);
-            const wager = await applyWalletWager(
-                userId,
-                guildId,
-                outcome.amount,
-                outcome.balanceDelta,
+        const symbol = await getEcoSymbol(guildId);
+        const outcome = settleCoinFlip(choiceOption, amount);
+        const wager = await applyWalletWager(
+            userId,
+            guildId,
+            outcome.amount,
+            outcome.balanceDelta,
+        );
+
+        if (!wager.ok) {
+            await InsuficientsFundsEmbed(
+                ctx,
+                wager.currentBalance,
+                amount,
+                symbol,
+                "spend",
             );
-
-            if (!wager.ok) {
-                await InsuficientsFundsEmbed(
-                    interaction,
-                    wager.currentBalance,
-                    amount,
-                    symbol,
-                    "spend",
-                );
-                return;
-            }
-
-            const delta = outcome.won ? outcome.amount : -outcome.amount;
-            await sendSimpleEmbed(interaction, {
-                author: interaction.user,
-                title: outcome.won
-                    ? `${Emoji.coin} You won!`
-                    : `${Emoji.coin} You lost`,
-                description: `You picked **${formatSide(outcome.choice)}** · the coin landed on **${formatSide(outcome.result)}**\n${headline(`${delta >= 0 ? "+" : "-"}${moneyText(symbol, Math.abs(delta))}`)}`,
-                tone: "success",
-                //? A lost bet is a normal result, not an error: only the color
-                //? changes, so it stays public and keeps the footer
-                color: outcome.won ? undefined : toneColor("error"),
-                fields: [
-                    {
-                        name: "Bet",
-                        value: money(symbol, outcome.amount),
-                        inline: true,
-                    },
-                    {
-                        name: `${Emoji.wallet} Wallet`,
-                        value: moneyChange(
-                            symbol,
-                            wager.previousBalance,
-                            wager.newBalance,
-                        ),
-                        inline: true,
-                    },
-                ],
-            });
-        } catch (error) {
-            logger.error("Error en comando coinflip", { error: error });
-            await internalErrorEmbed(interaction);
+            return;
         }
+
+        const delta = outcome.won ? outcome.amount : -outcome.amount;
+        await sendSimpleEmbed(ctx, {
+            author: ctx.user,
+            title: outcome.won
+                ? `${Emoji.coin} You won!`
+                : `${Emoji.coin} You lost`,
+            description: `You picked **${formatSide(outcome.choice)}** · the coin landed on **${formatSide(outcome.result)}**\n${headline(`${delta >= 0 ? "+" : "-"}${moneyText(symbol, Math.abs(delta))}`)}`,
+            tone: "success",
+            //? A lost bet is a normal result, not an error: only the color
+            //? changes, so it stays public and keeps the footer
+            color: outcome.won ? undefined : toneColor("error"),
+            fields: [
+                {
+                    name: "Bet",
+                    value: money(symbol, outcome.amount),
+                    inline: true,
+                },
+                {
+                    name: `${Emoji.wallet} Wallet`,
+                    value: moneyChange(
+                        symbol,
+                        wager.previousBalance,
+                        wager.newBalance,
+                    ),
+                    inline: true,
+                },
+            ],
+        });
     },
 };

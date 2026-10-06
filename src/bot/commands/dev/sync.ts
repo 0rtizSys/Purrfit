@@ -1,11 +1,5 @@
+import type { PrefixCommand } from "../../framework/types";
 import {
-    SlashCommandBuilder,
-    ChatInputCommandInteraction,
-    MessageFlags,
-} from "discord.js";
-import { Command } from "../types";
-import {
-    notEnoughPermsEmbed,
     sendErrorEmbed,
     sendSimpleEmbed,
 } from "../../Helpers/simplified_embed_builder";
@@ -16,26 +10,18 @@ import {
 } from "../../services/discord/deploy_commands";
 import { logger } from "../../services/logger";
 
-//? Only registered in GUILD_ID (see syncer.ts devCmds), and OWNER_ID-only at runtime
-export const syncSlash: Command = {
-    data: new SlashCommandBuilder()
-        .setName("sync_slash_guild")
-        .setDescription(
-            "Publish global commands and dev commands (owner only)",
-        ),
+//? Owner only (OWNER_ID): the dispatcher refuses everybody else
+export const syncCommands: PrefixCommand = {
+    name: "sync",
+    permission: "owner",
+    description: "Publish the slash commands (owner only)",
 
-    async execute(interaction: ChatInputCommandInteraction) {
-        if (interaction.user.id !== process.env.OWNER_ID) {
-            await notEnoughPermsEmbed(interaction);
-            return;
-        }
-
-        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-
+    async execute(ctx) {
+        await ctx.defer();
         try {
             const summary = await deployCommands(readDeployEnv());
-            await sendSimpleEmbed(interaction, {
-                title: `${Emoji.success} Commands deployed`,
+            await sendSimpleEmbed(ctx, {
+                title: `${Emoji.success} Slash commands deployed`,
                 fields: [
                     {
                         name: "Global",
@@ -43,8 +29,8 @@ export const syncSlash: Command = {
                         inline: true,
                     },
                     {
-                        name: "Dev server",
-                        value: `\`${summary.guild}\``,
+                        name: "Old server copies removed",
+                        value: summary.guildCleared ? "`yes`" : "`no GUILD_ID`",
                         inline: true,
                     },
                 ],
@@ -54,7 +40,7 @@ export const syncSlash: Command = {
         } catch (error) {
             logger.error("Error al sincronizar comandos", { error });
             await sendErrorEmbed(
-                interaction,
+                ctx,
                 "Deploy failed",
                 "The commands could not be published. Check the bot logs.",
             );

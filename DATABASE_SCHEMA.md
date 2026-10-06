@@ -5,7 +5,8 @@ This document describes the database schema used by the bot based on SQL queries
 > The real schema is in [`migrations/`](./migrations) and is applied automatically on start.
 > 2.0.0 added `tax_bps`, `bank_interest_bps` and `treasury` to `server_configurations`, and the
 > `crypto_assets`, `crypto_price_history`, `crypto_holdings` and `scheduled_jobs` tables
-> (see `migrations/002_advanced_economy.sql`). The sections below describe the original tables.
+> (see `migrations/002_advanced_economy.sql`). 3.0.0 added `server_configurations.prefix` (`004`) and the
+> `bot_guilds` table (`005`). The sections below describe the original tables.
 
 ## Conventions
 
@@ -93,6 +94,8 @@ Used by:
 - `src/bot/services/database/repository/servers/set_cd_time.ts`
 - `src/bot/services/database/repository/servers/get_eco_symbol.ts`
 - `src/bot/services/database/repository/servers/set_eco_symbol.ts`
+- `src/bot/services/database/repository/servers/prefix.ts`
+- the web backend (reads and writes it for the dashboard)
 
 **Columns**
 
@@ -101,6 +104,7 @@ Used by:
 | `guild_id`        | `TEXT`           | NO   |         | Guild/server ID (Discord) |
 | `cooldown_time`   | `INTEGER`        | YES/NO |         | Work cooldown in seconds (code falls back to `1800` if row is missing) |
 | `economy_symbol`  | `TEXT`           | YES/NO |         | Economy symbol (code falls back to `"$"` if row is missing) |
+| `prefix`          | `TEXT`           | NO   | `'$>'`  | Command prefix (3.0.0): 1 to 5 characters, no whitespace and none of `` ` `` `\` `@` `#` (checked by a `CHECK`, by `src/bot/framework/prefix.ts` and by the web backend) |
 
 **Constraints / indexes**
 
@@ -136,6 +140,24 @@ Written by `src/bot/services/heartbeat.ts` every 30 seconds (see `migrations/003
 | `version`, `environment` | `TEXT` | `package.json` version and `NODE_ENV` |
 | `rss_mb` | `INTEGER` | Process memory |
 | `last_event_at`, `last_event` | `TIMESTAMPTZ`, `TEXT` | Last relevant event (`command`, `guild_join`, `guild_leave`) |
+
+---
+
+## Servers the bot is in
+
+### Table: `bot_guilds`
+
+Kept by the bot (`src/bot/services/database/repository/servers/bot_guilds.ts`, migration `005_bot_guilds.sql`): all servers are stored when it starts, and it updates them when it joins, leaves or a server is renamed. The web dashboard reads it to know which of a user's servers have Purrfit.
+
+| Column | Type | Description |
+|---|---|---|
+| `guild_id` | `TEXT` PK | Discord server id (15 to 25 digits) |
+| `name` | `TEXT` | Server name (1 to 100 characters) |
+| `icon_hash` | `TEXT` | Icon identifier, null if it has none |
+| `member_count` | `INTEGER` | Approximate members |
+| `joined_at` | `TIMESTAMPTZ` | When the bot joined (reset when it comes back) |
+| `left_at` | `TIMESTAMPTZ` | Null while the bot is in the server |
+| `updated_at` | `TIMESTAMPTZ` | Last change |
 
 ---
 

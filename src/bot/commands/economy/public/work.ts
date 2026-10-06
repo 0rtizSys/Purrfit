@@ -1,9 +1,3 @@
-import {
-    SlashCommandBuilder,
-    ChatInputCommandInteraction,
-    MessageFlags,
-} from "discord.js";
-
 import { randomInt } from "crypto";
 
 import { claimWorkReward } from "../../../services/database/repository/clients/work";
@@ -12,13 +6,8 @@ import { getCdTime } from "../../../services/database/repository/servers/get_cd_
 
 import { getEcoSymbol } from "../../../services/database/repository/servers/get_eco_symbol";
 
-import { requireGuild } from "../../../Helpers/require_guild";
-
-import {
-    sendSimpleEmbed,
-    internalErrorEmbed,
-} from "../../../Helpers/simplified_embed_builder";
-import { logger } from "../../../services/logger";
+import { sendSimpleEmbed } from "../../../Helpers/simplified_embed_builder";
+import { cmd } from "../../../framework/context";
 import { Emoji } from "../../../ui/theme";
 import { headline, moneyText, relativeTime } from "../../../ui/format";
 
@@ -41,67 +30,53 @@ const SHIFTS = [
     "You napped professionally in a sunbeam",
 ];
 
-import { Command } from "../../types";
+import type { PrefixCommand } from "../../../framework/types";
 
-export const workCommand: Command = {
-    data: new SlashCommandBuilder()
-        .setName("work")
-        .setDescription("Work to generate money")
-        .addBooleanOption((opt) =>
-            opt
-                .setName("visibility")
-                .setDescription("People can see your earnings"),
-        ),
+export const workCommand: PrefixCommand = {
+    name: "work",
+    aliases: ["w"],
+    description: "Work to generate money",
 
-    async execute(interaction: ChatInputCommandInteraction) {
-        if (!(await requireGuild(interaction))) return;
+    async execute(ctx) {
         const ranGains = randomValues(TEMP_MIN, TEMP_MAX);
-        const guildId = interaction.guild!.id;
-        const userId = interaction.user.id;
-        const isPublic = interaction.options.getBoolean("visibility") ?? false;
-        await interaction.deferReply({
-            flags: !isPublic ? MessageFlags.Ephemeral : undefined,
-        });
-        try {
-            const [cdTime, symbol] = await Promise.all([
-                getCdTime(guildId),
-                getEcoSymbol(guildId),
-            ]);
-            //? Cooldown claim + payout run in one transaction, so spamming
-            //? /work in parallel can only pay once per cooldown window
-            const result = await claimWorkReward(
-                userId,
-                guildId,
-                ranGains,
-                cdTime * 1000,
-            );
-            if (!result.ok) {
-                await sendSimpleEmbed(interaction, {
-                    title: `${Emoji.cooldown} Taking a break`,
-                    description: `You are still tired from your last shift.\nYou can work again ${relativeTime(Date.now() + result.remaining)}.`,
-                    tone: "cooldown",
-                    eph: true,
-                });
-                return;
-            }
-            const shift = SHIFTS[randomInt(SHIFTS.length)];
-            await sendSimpleEmbed(interaction, {
-                author: interaction.user,
-                title: `${Emoji.work} Shift complete`,
-                description: `${shift} and earned\n${headline(`+${moneyText(symbol, ranGains)}`)}`,
-                fields: [
-                    {
-                        name: "Next shift",
-                        value: relativeTime(Date.now() + cdTime * 1000),
-                        inline: true,
-                    },
-                ],
-                hint: "Bank money earns daily interest. Move it with `/deposit`.",
-                tone: "success",
+        const { guildId } = ctx;
+        const userId = ctx.user.id;
+        const [cdTime, symbol] = await Promise.all([
+            getCdTime(guildId),
+            getEcoSymbol(guildId),
+        ]);
+        //? Cooldown claim + payout run in one transaction, so spamming
+        //? the command in parallel can only pay once per cooldown window
+        const result = await claimWorkReward(
+            userId,
+            guildId,
+            ranGains,
+            cdTime * 1000,
+        );
+        if (!result.ok) {
+            await sendSimpleEmbed(ctx, {
+                title: `${Emoji.cooldown} Taking a break`,
+                description: `You are still tired from your last shift.
+You can work again ${relativeTime(Date.now() + result.remaining)}.`,
+                tone: "cooldown",
             });
-        } catch (e) {
-            logger.error("Error en comando work", { error: e });
-            await internalErrorEmbed(interaction);
+            return;
         }
+        const shift = SHIFTS[randomInt(SHIFTS.length)];
+        await sendSimpleEmbed(ctx, {
+            author: ctx.user,
+            title: `${Emoji.work} Shift complete`,
+            description: `${shift} and earned
+${headline(`+${moneyText(symbol, ranGains)}`)}`,
+            fields: [
+                {
+                    name: "Next shift",
+                    value: relativeTime(Date.now() + cdTime * 1000),
+                    inline: true,
+                },
+            ],
+            hint: `Bank money earns daily interest. Move it with ${cmd(ctx, "deposit <amount>")}.`,
+            tone: "success",
+        });
     },
 };

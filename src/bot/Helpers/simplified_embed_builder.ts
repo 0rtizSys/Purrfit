@@ -1,10 +1,8 @@
-import {
-    EmbedBuilder,
-    ChatInputCommandInteraction,
-    MessageFlags,
-} from "discord.js";
+import { EmbedBuilder } from "discord.js";
 
 import { SimpleEmbedOptions } from "../commands/types";
+import type { Permission, Replier } from "../framework/types";
+import { cmd } from "../framework/context";
 import { BOT_NAME, Emoji, toneColor } from "../ui/theme";
 import { money } from "../ui/format";
 
@@ -15,7 +13,7 @@ import { money } from "../ui/format";
 //?------------------------------------------------------------------
 
 export function buildEmbed(
-    interaction: ChatInputCommandInteraction,
+    replier: Replier,
     options: SimpleEmbedOptions,
 ): EmbedBuilder {
     const tone = options.tone ?? "brand";
@@ -44,7 +42,7 @@ export function buildEmbed(
     if (tone !== "error") {
         embed.setFooter({
             text: BOT_NAME,
-            iconURL: interaction.client?.user?.displayAvatarURL?.(),
+            iconURL: replier.client?.user?.displayAvatarURL?.(),
         });
     }
     if (options.timestamp) embed.setTimestamp();
@@ -53,48 +51,34 @@ export function buildEmbed(
 }
 
 export async function sendSimpleEmbed(
-    interaction: ChatInputCommandInteraction,
+    replier: Replier,
     options: SimpleEmbedOptions,
 ): Promise<void> {
-    const embed = buildEmbed(interaction, options);
-    const isError = options.tone === "error";
-    const wantsPrivate = isError || Boolean(options.eph);
-    const files = options.files ?? [];
-
-    if (interaction.deferred || interaction.replied) {
-        //? A deferred public reply cannot become ephemeral, so an error (or a
-        //? private message) after a public defer replaces it with a private
-        //? follow-up instead of showing it to the whole channel
-        if (wantsPrivate && interaction.deferred && !interaction.ephemeral) {
-            try {
-                await interaction.deleteReply();
-                await interaction.followUp({
-                    embeds: [embed],
-                    flags: MessageFlags.Ephemeral,
-                });
-                return;
-            } catch {
-                //? Fall back to editing the public reply
-            }
-        }
-        await interaction.editReply({ embeds: [embed], files });
-    } else {
-        await interaction.reply({
+    const embed = buildEmbed(replier, options);
+    //? Errors and cooldown notices are temporary: ephemeral on a slash command,
+    //? removed from the channel a few seconds later in chat
+    const temporary =
+        options.tone === "error" ||
+        options.tone === "cooldown" ||
+        Boolean(options.eph);
+    await replier.send(
+        {
             embeds: [embed],
-            files,
-            flags: wantsPrivate ? MessageFlags.Ephemeral : undefined,
-        });
-    }
+            files: options.files ?? [],
+            components: options.components,
+        },
+        { temporary },
+    );
 }
 
 /** Shorthand for an error embed: specific title, what happened, how to fix it */
 export async function sendErrorEmbed(
-    interaction: ChatInputCommandInteraction,
+    replier: Replier,
     title: string,
     description: string,
     hint?: string,
 ): Promise<void> {
-    await sendSimpleEmbed(interaction, {
+    await sendSimpleEmbed(replier, {
         title: `${Emoji.error} ${title}`,
         description,
         hint,
@@ -106,11 +90,9 @@ export async function sendErrorEmbed(
 //? Internal Error Embed Manager
 //?-------------------------------
 
-export async function internalErrorEmbed(
-    interaction: ChatInputCommandInteraction,
-) {
+export async function internalErrorEmbed(replier: Replier) {
     await sendErrorEmbed(
-        interaction,
+        replier,
         "Something went wrong",
         "An unexpected error happened while processing your request. Nothing was changed.",
         "Try again in a moment.",
@@ -122,12 +104,15 @@ export async function internalErrorEmbed(
 //?---------------------------------
 
 export async function notEnoughPermsEmbed(
-    interaction: ChatInputCommandInteraction,
+    replier: Replier,
+    permission: Permission = "admin",
 ) {
     await sendErrorEmbed(
-        interaction,
+        replier,
         "Missing permissions",
-        "You need the **Administrator** permission to use this command.",
+        permission === "owner"
+            ? "Only the bot owner can use this command."
+            : "You need the **Administrator** permission to use this command.",
     );
 }
 
@@ -135,11 +120,9 @@ export async function notEnoughPermsEmbed(
 //? Amount Below 1 or Above 1 Billion
 //?-----------------------------------
 
-export async function amountErrorEmbed(
-    interaction: ChatInputCommandInteraction,
-) {
+export async function amountErrorEmbed(replier: Replier) {
     await sendErrorEmbed(
-        interaction,
+        replier,
         "Invalid amount",
         "The amount must be between `1` and `1,000,000,000`.",
     );
@@ -149,11 +132,9 @@ export async function amountErrorEmbed(
 //? Transaction went wrong
 //?-------------------------
 
-export async function transactionWentWrong(
-    interaction: ChatInputCommandInteraction,
-) {
+export async function transactionWentWrong(replier: Replier) {
     await sendErrorEmbed(
-        interaction,
+        replier,
         "Transaction failed",
         "The transaction could not be completed. No money was moved.",
         "Try again in a moment.",
@@ -165,24 +146,34 @@ export async function transactionWentWrong(
 //?--------------------
 
 const FUNDS_SOURCE = {
-    withdraw: { label: "Bank", hint: "Check it with `/bank_balance`." },
-    deposit: { label: "Wallet", hint: "Earn more with `/work`." },
+    withdraw: {
+        label: "Bank",
+        hint: (r: Replier) => `Check it with ${cmd(r, "bank_balance")}.`,
+    },
+    deposit: {
+        label: "Wallet",
+        hint: (r: Replier) => `Earn more with ${cmd(r, "work")}.`,
+    },
     transfer: {
         label: "Bank",
-        hint: "Transfers come from your bank. Use `/deposit` first.",
+        hint: (r: Replier) =>
+            `Transfers come from your bank. Use ${cmd(r, "deposit")} first.`,
     },
-    spend: { label: "Wallet", hint: "Earn more with `/work`." },
+    spend: {
+        label: "Wallet",
+        hint: (r: Replier) => `Earn more with ${cmd(r, "work")}.`,
+    },
 } as const;
 
 export async function InsuficientsFundsEmbed(
-    interaction: ChatInputCommandInteraction,
+    replier: Replier,
     currentBalance: number,
     currentAmount: number,
     symbol: string,
     type: "withdraw" | "deposit" | "transfer" | "spend",
 ) {
     const source = FUNDS_SOURCE[type];
-    await sendSimpleEmbed(interaction, {
+    await sendSimpleEmbed(replier, {
         title: `${Emoji.error} Not enough money`,
         description: `You tried to ${type} ${money(symbol, currentAmount)} but you are ${money(symbol, currentAmount - currentBalance)} short.`,
         fields: [
@@ -197,7 +188,7 @@ export async function InsuficientsFundsEmbed(
                 inline: true,
             },
         ],
-        hint: source.hint,
+        hint: source.hint(replier),
         tone: "error",
     });
 }
@@ -206,12 +197,12 @@ export async function InsuficientsFundsEmbed(
 //?  Same User Error
 //?------------------
 
-export async function SameUserEmbed(interaction: ChatInputCommandInteraction) {
+export async function SameUserEmbed(replier: Replier) {
     await sendErrorEmbed(
-        interaction,
+        replier,
         "You can't pay yourself",
         "Pick another member to send money to.",
-        "To move money between your wallet and bank, use `/deposit` or `/withdraw`.",
+        `To move money between your wallet and bank, use ${cmd(replier, "deposit")} or ${cmd(replier, "withdraw")}.`,
     );
 }
 
@@ -219,9 +210,9 @@ export async function SameUserEmbed(interaction: ChatInputCommandInteraction) {
 //?  Bot Target Embed
 //?-------------------
 
-export async function botTargetEmbed(interaction: ChatInputCommandInteraction) {
+export async function botTargetEmbed(replier: Replier) {
     await sendErrorEmbed(
-        interaction,
+        replier,
         "Bots can't hold money",
         "Pick a human member instead.",
     );
