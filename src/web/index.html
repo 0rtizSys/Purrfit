@@ -71,7 +71,10 @@
                         >
                     </div>
                     <ul class="stats">
-                        <li><b data-count="22">0</b><span>comandos</span></li>
+                        <li>
+                            <b data-count="22" id="stat-commands">0</b
+                            ><span>comandos</span>
+                        </li>
                         <li>
                             <b data-count="5">0</b><span>criptomonedas</span>
                         </li>
@@ -138,8 +141,8 @@
                         ></span>
                         <h3>Economía</h3>
                         <p>
-                            Gana con <code>/work</code>, guarda en el banco con
-                            interés diario y envía dinero a otros miembros.
+                            Gana con <code>$&gt;work</code>, guarda en el banco
+                            con interés diario y envía dinero a otros miembros.
                         </p>
                     </article>
                     <article class="card reveal">
@@ -151,8 +154,8 @@
                         ></span>
                         <h3>Cripto simulada</h3>
                         <p>
-                            Purrcoin, Meowthereum y más, con gráficas de 1h,
-                            24h, 7d y 30d.
+                            Purrcoin, Meowthereum y más, con velas de 5 minutos
+                            a 1 día en el panel web.
                         </p>
                     </article>
                     <article class="card reveal">
@@ -198,7 +201,7 @@
                         ></span>
                         <h3>Juegos</h3>
                         <p>
-                            Apuesta en <code>/coinflip</code> y escala en el
+                            Apuesta en <code>$&gt;coinflip</code> y escala en el
                             ranking del servidor.
                         </p>
                     </article>
@@ -217,8 +220,8 @@
                         ></span>
                         <h3>Configurable</h3>
                         <p>
-                            Símbolo, cooldown, impuestos e interés: los admins
-                            mandan.
+                            Prefijo, símbolo, cooldown, impuestos e interés: los
+                            admins mandan, también desde el panel web.
                         </p>
                     </article>
                     <article class="card reveal">
@@ -247,8 +250,8 @@
                         ></span>
                         <h3>Tus datos, tuyos</h3>
                         <p>
-                            Borra todo con <code>/delete_my_data</code> cuando
-                            quieras.
+                            Borra todo con
+                            <code>$&gt;delete_my_data</code> cuando quieras.
                         </p>
                     </article>
                 </div>
@@ -263,6 +266,13 @@
                     role="group"
                     aria-label="Filtrar por categoría"
                 ></div>
+                <p class="lead">
+                    Los comandos usan el prefijo <code>$&gt;</code> por defecto
+                    (por ejemplo <code>$&gt;work</code>). Cada servidor puede
+                    cambiarlo desde el panel. Solo <code>/help</code>,
+                    <code>/dashboard</code> y <code>/support</code> son comandos
+                    de barra.
+                </p>
                 <ul class="commands" id="commands"></ul>
                 <p class="lead">Monedas: <span id="coins"></span></p>
                 <p class="links">
@@ -286,7 +296,10 @@
                         <b>2</b>
                         <div>
                             <h3>Configura</h3>
-                            <p>Un admin ajusta símbolo, impuestos e interés.</p>
+                            <p>
+                                Desde el panel web, un admin ajusta prefijo,
+                                símbolo, impuestos e interés.
+                            </p>
                         </div>
                     </li>
                     <li class="reveal">
@@ -294,8 +307,8 @@
                         <div>
                             <h3>A ganar</h3>
                             <p>
-                                Prueba <code>/work</code> y mira tu
-                                <code>/crypto market</code>.
+                                Prueba <code>$&gt;work</code> y mira
+                                <code>$&gt;crypto market</code>.
                             </p>
                         </div>
                     </li>

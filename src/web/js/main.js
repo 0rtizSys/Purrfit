@@ -74,40 +74,77 @@
         .then(applyConfig)
         .catch(() => {});
 
-    // Comandos con filtro por categoría
-    const cats = ["Todos", ...new Set(cfg.COMMANDS.map((c) => c.cat))];
+    // Comandos con filtro por categoría. Parten de la lista estática (config.js) y
+    // se sustituyen por el manifiesto real del bot (/api/commands) cuando llega.
     const tabs = $("#tabs"),
         list = $("#commands");
+    let commands = cfg.COMMANDS;
     let active = "Todos";
     const render = () => {
         $$("button", tabs).forEach((b) =>
             b.setAttribute("aria-pressed", b.textContent === active),
         );
         list.replaceChildren(
-            ...cfg.COMMANDS.filter(
-                (c) => active === "Todos" || c.cat === active,
-            ).map((c) => {
-                const li = document.createElement("li");
-                const code = document.createElement("code");
-                const span = document.createElement("span");
-                code.textContent = c.name;
-                span.textContent = c.desc;
-                li.append(code, span);
-                return li;
-            }),
+            ...commands
+                .filter((c) => active === "Todos" || c.cat === active)
+                .map((c) => {
+                    const li = document.createElement("li");
+                    const code = document.createElement("code");
+                    const span = document.createElement("span");
+                    code.textContent = c.name;
+                    span.textContent = c.desc;
+                    li.append(code, span);
+                    return li;
+                }),
         );
     };
-    cats.forEach((cat) => {
-        const b = document.createElement("button");
-        b.type = "button";
-        b.textContent = cat;
-        b.addEventListener("click", () => {
-            active = cat;
-            render();
-        });
-        tabs.append(b);
-    });
-    render();
+    const buildTabs = () => {
+        const cats = ["Todos", ...new Set(commands.map((c) => c.cat))];
+        if (!cats.includes(active)) active = "Todos";
+        tabs.replaceChildren(
+            ...cats.map((cat) => {
+                const b = document.createElement("button");
+                b.type = "button";
+                b.textContent = cat;
+                b.addEventListener("click", () => {
+                    active = cat;
+                    render();
+                });
+                return b;
+            }),
+        );
+        render();
+    };
+    buildTabs();
+
+    // Manifiesto -> lista plana. `usage` no lleva prefijo: se antepone el de por defecto.
+    const fromManifest = (m) => {
+        const prefix =
+            typeof m.defaultPrefix === "string" ? m.defaultPrefix : "$>";
+        const out = [];
+        for (const cat of m.categories) {
+            for (const c of cat.commands) {
+                out.push({
+                    cat: cat.title,
+                    name: `${prefix}${c.name}`,
+                    desc: c.description,
+                });
+                for (const sub of c.subcommands || [])
+                    out.push({
+                        cat: cat.title,
+                        name: `${prefix}${c.name} ${sub.name}`,
+                        desc: sub.description,
+                    });
+            }
+        }
+        for (const s of m.slash || [])
+            out.push({
+                cat: "Comandos de barra",
+                name: `/${s.name}`,
+                desc: s.description,
+            });
+        return out;
+    };
 
     $("#coins").textContent = cfg.COINS_LIST.map(
         (c) => `${c.name} (${c.sym})`,
@@ -115,7 +152,7 @@
     $("#year").textContent = new Date().getFullYear();
 
     // Ticker: la lista se duplica para que el bucle del -50% no tenga saltos.
-    // Los precios reales llegan de /api/market (snapshot del worker, cada 2 min).
+    // Los precios reales llegan de /api/market/assets (leidos de la base de datos).
     const ticker = $("#ticker");
     const item = (c) => {
         const d = document.createElement("div");
@@ -147,7 +184,7 @@
                 px.textContent = "";
                 return;
             }
-            const ch = a.change24hPct;
+            const ch = a.change24hPercent ?? a.change24hPct ?? 0;
             const cls = ch >= 0 ? "up" : "down";
             px.replaceChildren();
             const price = document.createElement("strong"),
@@ -159,7 +196,7 @@
         });
     };
     const refreshMarket = () =>
-        fetch("/api/market", { cache: "no-store" })
+        fetch("/api/market/assets", { cache: "no-store" })
             .then((r) => (r.ok ? r.json() : Promise.reject()))
             .then(applyMarket)
             .catch(() => {}); // sin datos: el ticker se queda con los nombres
@@ -206,11 +243,34 @@
             dur = 1200;
         const step = (now) => {
             const p = Math.min((now - t0) / dur, 1);
-            el.textContent = Math.round(end * (1 - Math.pow(1 - p, 3)));
+            const to = Number(el.dataset.count);
+            el.textContent = Math.round(to * (1 - Math.pow(1 - p, 3)));
             if (p < 1) requestAnimationFrame(step);
+            else el.dataset.done = "1";
         };
         requestAnimationFrame(step);
     });
+
+    // Lista real de comandos del bot (si el endpoint no responde, queda la estática).
+    fetch("/api/commands", { cache: "no-store" })
+        .then((r) => (r.ok ? r.json() : Promise.reject()))
+        .then((m) => {
+            if (!m || !Array.isArray(m.categories)) return;
+            const real = fromManifest(m);
+            if (!real.length) return;
+            commands = real;
+            buildTabs();
+            const total =
+                m.categories.reduce((n, c) => n + c.commands.length, 0) +
+                (m.slash || []).length;
+            const count = $("#stat-commands");
+            if (count) {
+                count.dataset.count = String(total);
+                if (reduce || count.dataset.done)
+                    count.textContent = String(total);
+            }
+        })
+        .catch(() => {});
 
     // Inclinación sutil del retrato con el mouse
     const art = $(".hero-art"),
